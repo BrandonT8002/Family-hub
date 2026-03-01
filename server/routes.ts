@@ -258,6 +258,33 @@ export async function registerRoutes(
     }
   });
 
+  app.patch(api.groceryItems.update.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const input = api.groceryItems.update.input.parse(req.body);
+      const updateData: any = {};
+      if (input.name !== undefined) updateData.name = input.name;
+      if (input.category !== undefined) updateData.category = input.category;
+      if (input.price !== undefined) updateData.price = input.price.toString();
+      if (input.notes !== undefined) updateData.notes = input.notes;
+      const item = await storage.updateGroceryItem(Number(req.params.id), updateData);
+      res.json(item);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.delete(api.groceryItems.remove.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      await storage.deleteGroceryItem(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete item" });
+    }
+  });
+
   // Conversations
   app.get(api.conversations.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
     const userId = req.user.claims.sub;

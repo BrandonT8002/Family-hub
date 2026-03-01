@@ -32,6 +32,8 @@ export interface IStorage {
   getGroceryItems(listId: number): Promise<(typeof groceryItems.$inferSelect)[]>;
   createGroceryItem(item: InsertGroceryItem): Promise<typeof groceryItems.$inferSelect>;
   toggleGroceryItem(id: number, isChecked: boolean): Promise<typeof groceryItems.$inferSelect>;
+  updateGroceryItem(id: number, data: Partial<typeof groceryItems.$inferSelect>): Promise<typeof groceryItems.$inferSelect>;
+  deleteGroceryItem(id: number): Promise<void>;
 
   getConversationsForUser(familyId: number, userId: string): Promise<any[]>;
   getOrCreateGroupConversation(familyId: number): Promise<typeof conversations.$inferSelect>;
@@ -170,6 +172,15 @@ export class DatabaseStorage implements IStorage {
   async toggleGroceryItem(id: number, isChecked: boolean) {
     const [updated] = await db.update(groceryItems).set({ isChecked }).where(eq(groceryItems.id, id)).returning();
     return updated;
+  }
+
+  async updateGroceryItem(id: number, data: Partial<typeof groceryItems.$inferSelect>) {
+    const [updated] = await db.update(groceryItems).set(data).where(eq(groceryItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGroceryItem(id: number) {
+    await db.delete(groceryItems).where(eq(groceryItems.id, id));
   }
 
   async getOrCreateGroupConversation(familyId: number) {

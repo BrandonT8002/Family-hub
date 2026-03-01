@@ -217,7 +217,29 @@ export const api = {
         200: z.custom<typeof groceryItems.$inferSelect>(),
         401: errorSchemas.unauthorized,
       }
-    }
+    },
+    update: {
+      method: 'PATCH' as const,
+      path: '/api/grocery-items/:id' as const,
+      input: z.object({
+        name: z.string().optional(),
+        category: z.string().optional(),
+        price: z.number().or(z.string()).optional(),
+        notes: z.string().nullable().optional(),
+      }),
+      responses: {
+        200: z.custom<typeof groceryItems.$inferSelect>(),
+        401: errorSchemas.unauthorized,
+      }
+    },
+    remove: {
+      method: 'DELETE' as const,
+      path: '/api/grocery-items/:id' as const,
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        401: errorSchemas.unauthorized,
+      }
+    },
   },
   conversations: {
     list: {

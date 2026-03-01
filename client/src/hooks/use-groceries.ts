@@ -68,3 +68,33 @@ export function useToggleGroceryItem() {
     },
   });
 }
+
+export function useUpdateGroceryItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, listId, ...data }: { id: number; listId: string | number; name?: string; category?: string; price?: string | number; notes?: string | null }) => {
+      const path = buildUrl(api.groceryItems.update.path, { id });
+      const res = await apiRequest("PATCH", path, data);
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      const path = buildUrl(api.groceryItems.list.path, { listId: variables.listId });
+      queryClient.invalidateQueries({ queryKey: [path] });
+    },
+  });
+}
+
+export function useDeleteGroceryItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, listId }: { id: number; listId: string | number }) => {
+      const path = buildUrl(api.groceryItems.remove.path, { id });
+      const res = await apiRequest("DELETE", path);
+      return res.json();
+    },
+    onSuccess: (_, variables) => {
+      const path = buildUrl(api.groceryItems.list.path, { listId: variables.listId });
+      queryClient.invalidateQueries({ queryKey: [path] });
+    },
+  });
+}
