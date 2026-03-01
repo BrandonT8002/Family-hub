@@ -19,6 +19,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/hooks/use-auth";
 import { useFamily } from "@/hooks/use-family";
@@ -38,6 +39,7 @@ export function AppSidebar() {
   const [location] = useLocation();
   const { user, logout } = useAuth();
   const { data: family } = useFamily();
+  const { setOpenMobile } = useSidebar();
 
   return (
     <Sidebar variant="inset" className="border-r border-border/50">
@@ -63,7 +65,11 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                      <Link href={item.url} className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${isActive ? 'text-primary font-medium bg-primary/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}>
+                      <Link 
+                        href={item.url} 
+                        onClick={() => setOpenMobile(false)}
+                        className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all ${isActive ? 'text-primary font-medium bg-primary/5' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'}`}
+                      >
                         <item.icon className="w-4 h-4" />
                         <span>{item.title}</span>
                       </Link>
