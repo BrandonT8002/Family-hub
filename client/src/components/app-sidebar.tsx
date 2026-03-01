@@ -30,8 +30,8 @@ const navItems = [
   { title: "Schedule", url: "/schedule", icon: CalendarDays },
   { title: "Money", url: "/money", icon: Wallet },
   { title: "Shopping", url: "/groceries", icon: ShoppingCart },
-  { title: "Shopping", url: "/groceries", icon: ShoppingCart },
   { title: "Chat", url: "/chat", icon: MessageSquare },
+  { title: "Settings", url: "/settings", icon: Settings },
 ];
 
 export function AppSidebar() {

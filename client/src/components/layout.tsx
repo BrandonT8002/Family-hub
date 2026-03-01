@@ -16,15 +16,55 @@ export function Layout({ children }: { children: ReactNode }) {
   const { data: family, isLoading: familyLoading } = useFamily();
   const createFamily = useCreateFamily();
   const [familyName, setFamilyName] = useState("");
+  const [selectedTheme, setSelectedTheme] = useState({
+    home: "#b3d9ff",
+    schedule: "#e0b3ff",
+    money: "#ffb3c1",
+    groceries: "#ffd9b3",
+    chat: "#b3ffcc"
+  });
   const [location] = useLocation();
 
+  const THEMES = [
+    { name: "Classic", colors: { home: "#b3d9ff", schedule: "#e0b3ff", money: "#ffb3c1", groceries: "#ffd9b3", chat: "#b3ffcc" } },
+    { name: "Muted", colors: { home: "#d1e9ff", schedule: "#f3e8ff", money: "#ffe4e9", groceries: "#fff2e6", chat: "#e6ffed" } },
+    { name: "Sunset", colors: { home: "#ffedd5", schedule: "#fee2e2", money: "#fef3c7", groceries: "#f0fdf4", chat: "#eff6ff" } },
+  ];
+
   const getPastelBg = () => {
-    if (location === "/") return "bg-[#b3d9ff]"; // Bold Pastel Blue
-    if (location === "/schedule") return "bg-[#e0b3ff]"; // Bold Pastel Lavender
-    if (location === "/money") return "bg-[#ffb3c1]"; // Bold Pastel Rose
-    if (location.startsWith("/groceries")) return "bg-[#ffd9b3]"; // Bold Pastel Peach
-    if (location === "/chat") return "bg-[#b3ffcc]"; // Bold Pastel Mint
+    const config = (family?.themeConfig as any) || {
+      home: "#b3d9ff",
+      schedule: "#e0b3ff",
+      money: "#ffb3c1",
+      groceries: "#ffd9b3",
+      chat: "#b3ffcc"
+    };
+
+    if (location === "/") return `bg-[${config.home}]`;
+    if (location === "/schedule") return `bg-[${config.schedule}]`;
+    if (location === "/money") return `bg-[${config.money}]`;
+    if (location.startsWith("/groceries")) return `bg-[${config.groceries}]`;
+    if (location === "/chat") return `bg-[${config.chat}]`;
+    if (location === "/settings") return "bg-slate-100";
     return "bg-background";
+  };
+
+  const getStyle = () => {
+    const config = (family?.themeConfig as any) || {
+      home: "#b3d9ff",
+      schedule: "#e0b3ff",
+      money: "#ffb3c1",
+      groceries: "#ffd9b3",
+      chat: "#b3ffcc"
+    };
+    
+    if (location === "/") return config.home;
+    if (location === "/schedule") return config.schedule;
+    if (location === "/money") return config.money;
+    if (location.startsWith("/groceries")) return config.groceries;
+    if (location === "/chat") return config.chat;
+    if (location === "/settings") return "#f1f5f9";
+    return "#ffffff";
   };
 
   if (authLoading) {
@@ -66,26 +106,48 @@ export function Layout({ children }: { children: ReactNode }) {
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (familyName.trim()) {
-                    createFamily.mutate({ name: familyName });
+                    createFamily.mutate({ name: familyName, themeConfig: selectedTheme });
                   }
                 }}
-                className="space-y-4 pt-4"
+                className="space-y-6 pt-4"
               >
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">Family Name</label>
+                  <label className="text-sm font-black text-slate-700 ml-1">Family Name</label>
                   <Input 
                     placeholder="e.g. The Smiths, Our Home..." 
                     value={familyName}
                     onChange={(e) => setFamilyName(e.target.value)}
-                    className="h-12 px-4 rounded-xl bg-background border-border/50 focus:ring-primary/20 transition-all"
+                    className="h-14 px-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-primary/30 text-lg font-bold"
                   />
                 </div>
+
+                <div className="space-y-3">
+                  <label className="text-sm font-black text-slate-700 ml-1">Pick a Starting Theme</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {THEMES.map((t) => (
+                      <button
+                        key={t.name}
+                        type="button"
+                        onClick={() => setSelectedTheme(t.colors)}
+                        className={`p-3 rounded-2xl border-2 transition-all text-left ${JSON.stringify(selectedTheme) === JSON.stringify(t.colors) ? 'border-primary bg-primary/5' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}
+                      >
+                        <div className="flex gap-0.5 mb-2">
+                          {Object.values(t.colors).slice(0, 3).map((c, i) => (
+                            <div key={i} className="w-3 h-3 rounded-full border border-white" style={{ backgroundColor: c }} />
+                          ))}
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-600">{t.name}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <Button 
                   type="submit" 
-                  className="w-full h-12 rounded-xl text-base font-semibold shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
+                  className="w-full h-14 rounded-2xl text-lg font-black shadow-xl shadow-primary/20 transition-all active:scale-[0.98] bg-primary text-white"
                   disabled={!familyName.trim() || createFamily.isPending}
                 >
-                  {createFamily.isPending ? "Creating..." : "Create Family Space"}
+                  {createFamily.isPending ? "Creating..." : "Start Family Adventure"}
                 </Button>
               </form>
             </CardContent>
@@ -101,7 +163,10 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider style={style}>
-      <div className={`flex h-screen w-full transition-colors duration-500 text-foreground overflow-hidden ${getPastelBg()}`}>
+      <div 
+        className="flex h-screen w-full transition-colors duration-500 text-foreground overflow-hidden"
+        style={{ backgroundColor: getStyle() }}
+      >
         <AppSidebar />
         <div className="flex flex-col flex-1 w-full relative overflow-hidden">
           <header className="flex lg:hidden items-center p-4 border-b border-border/50 glass z-10 sticky top-0">

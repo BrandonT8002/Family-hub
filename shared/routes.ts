@@ -28,7 +28,7 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/family' as const,
-      input: z.object({ name: z.string() }),
+      input: z.object({ name: z.string(), themeConfig: z.any().optional() }),
       responses: {
         201: z.custom<typeof families.$inferSelect>(),
         400: errorSchemas.validation,

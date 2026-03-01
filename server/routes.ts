@@ -39,6 +39,15 @@ export async function registerRoutes(
     }
   }
 
+  app.patch(api.family.get.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const family = await storage.updateFamily(req.family.id, req.body);
+      res.json(family);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update family" });
+    }
+  });
+
   app.get(api.family.get.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const family = await storage.getFamilyForUser(userId);
@@ -53,6 +62,9 @@ export async function registerRoutes(
       const input = api.family.create.input.parse(req.body);
       const userId = req.user.claims.sub;
       const family = await storage.createFamily(input.name, userId);
+      if (input.themeConfig) {
+        await storage.updateFamily(family.id, { themeConfig: input.themeConfig });
+      }
       res.status(201).json(family);
     } catch (err) {
       if (err instanceof z.ZodError) {

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, numeric, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -10,6 +10,13 @@ export const families = pgTable("families", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   ownerId: text("owner_id").references(() => users.id).notNull(),
+  themeConfig: jsonb("theme_config").default({
+    home: "#b3d9ff",
+    schedule: "#e0b3ff",
+    money: "#ffb3c1",
+    groceries: "#ffd9b3",
+    chat: "#b3ffcc"
+  }),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

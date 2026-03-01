@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 import { ArrowRight, Heart, Calendar, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function LandingPage() {
+  const { login } = useAuth();
   return (
     <div className="min-h-screen flex flex-col lg:flex-row bg-background text-foreground font-sans">
       {/* Left Panel - Branding/Hero */}
@@ -71,7 +73,7 @@ export default function LandingPage() {
           <div className="bg-card p-8 rounded-3xl border border-border/50 shadow-xl shadow-black/5">
             <Button 
               className="w-full h-14 rounded-xl text-base font-semibold transition-all hover:-translate-y-0.5 shadow-lg shadow-primary/25 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary"
-              onClick={() => window.location.href = "/api/login"}
+              onClick={() => login()}
             >
               Continue with Replit
               <ArrowRight className="w-5 h-5 ml-2" />

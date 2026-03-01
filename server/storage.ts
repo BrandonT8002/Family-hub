@@ -10,6 +10,7 @@ export interface IStorage {
   // Family
   getFamilyForUser(userId: string): Promise<typeof families.$inferSelect | null>;
   createFamily(name: string, ownerId: string): Promise<typeof families.$inferSelect>;
+  updateFamily(id: number, data: Partial<typeof families.$inferSelect>): Promise<typeof families.$inferSelect>;
   
   // Events
   getEvents(familyId: number): Promise<(typeof events.$inferSelect)[]>;
@@ -49,9 +50,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createFamily(name: string, ownerId: string) {
-    const [family] = await db.insert(families).values({ name, ownerId }).returning();
+    const [family] = await db.insert(families).values({ 
+      name, 
+      ownerId,
+      themeConfig: {
+        home: "#b3d9ff",
+        schedule: "#e0b3ff",
+        money: "#ffb3c1",
+        groceries: "#ffd9b3",
+        chat: "#b3ffcc"
+      }
+    }).returning();
     await db.insert(familyMembers).values({ familyId: family.id, userId: ownerId, role: "Owner" });
     return family;
+  }
+
+  async updateFamily(id: number, data: Partial<typeof families.$inferSelect>) {
+    const [updated] = await db.update(families).set(data).where(eq(families.id, id)).returning();
+    return updated;
   }
 
   async getEvents(familyId: number) {

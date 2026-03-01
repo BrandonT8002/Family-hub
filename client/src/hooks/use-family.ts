@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@shared/routes";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Family } from "@shared/schema";
 
 export function useFamily() {
   return useQuery({
@@ -15,10 +17,31 @@ export function useFamily() {
   });
 }
 
+export function useUpdateFamily() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: async (data: Partial<Family>) => {
+      const res = await apiRequest("PATCH", api.family.get.path, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.family.get.path] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
 export function useCreateFamily() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string }) => {
+    mutationFn: async (data: { name: string, themeConfig?: any }) => {
       const res = await apiRequest("POST", api.family.create.path, data);
       return api.family.create.responses[201].parse(await res.json());
     },
