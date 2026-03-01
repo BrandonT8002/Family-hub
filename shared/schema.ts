@@ -40,6 +40,7 @@ export const familyMembers = pgTable("family_members", {
   role: text("role").notNull(), // Owner, Adult, Teen, Youth, Child, Caregiver
   displayName: text("display_name"),
   dateOfBirth: timestamp("date_of_birth"),
+  isTemporaryAdmin: boolean("is_temporary_admin").default(false),
 });
 
 export const ROLE_AGE_RULES = {
@@ -207,6 +208,7 @@ export const conversationParticipants = pgTable("conversation_participants", {
   id: serial("id").primaryKey(),
   conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
   userId: text("user_id").references(() => users.id).notNull(),
+  mutedUntil: timestamp("muted_until"),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 
@@ -422,3 +424,79 @@ export type Caregiver = typeof caregivers.$inferSelect;
 export const insertCareNoteSchema = createInsertSchema(careNotes).omit({ id: true, createdAt: true, isLocked: true });
 export type InsertCareNote = z.infer<typeof insertCareNoteSchema>;
 export type CareNote = typeof careNotes.$inferSelect;
+
+// ============ OUTSIDE FAMILY CONNECTIONS ============
+export const familyConnections = pgTable("family_connections", {
+  id: serial("id").primaryKey(),
+  requestingFamilyId: integer("requesting_family_id").references(() => families.id).notNull(),
+  targetFamilyId: integer("target_family_id").references(() => families.id).notNull(),
+  status: text("status").notNull().default("pending"),
+  permissions: jsonb("permissions").default({ sharedEvents: true, sharedWishlists: false, chat: false, careNotes: false }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type FamilyConnection = typeof familyConnections.$inferSelect;
+
+// ============ ACADEMIC TRACKING ============
+export const academicClasses = pgTable("academic_classes", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  studentId: text("student_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  teacherName: text("teacher_name"),
+  gradingScale: text("grading_scale").notNull().default("percentage"),
+  currentGrade: text("current_grade"),
+  notes: text("notes"),
+  semester: text("semester"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const academicEntries = pgTable("academic_entries", {
+  id: serial("id").primaryKey(),
+  classId: integer("class_id").references(() => academicClasses.id).notNull(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  type: text("type").notNull().default("assignment"),
+  title: text("title").notNull(),
+  score: text("score"),
+  maxScore: text("max_score"),
+  weight: numeric("weight"),
+  date: timestamp("date").defaultNow(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type AcademicClass = typeof academicClasses.$inferSelect;
+export type AcademicEntry = typeof academicEntries.$inferSelect;
+
+// ============ WORKOUT TRACKING ============
+export const workouts = pgTable("workouts", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  duration: integer("duration"),
+  reps: integer("reps"),
+  sets: integer("sets"),
+  weight: numeric("weight"),
+  distance: numeric("distance"),
+  distanceUnit: text("distance_unit").default("miles"),
+  notes: text("notes"),
+  isPrivate: boolean("is_private").default(true),
+  date: timestamp("date").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Workout = typeof workouts.$inferSelect;
+
+// ============ ANNUAL SNAPSHOTS ============
+export const snapshots = pgTable("snapshots", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  userId: text("user_id").references(() => users.id),
+  type: text("type").notNull().default("monthly"),
+  period: text("period").notNull(),
+  data: jsonb("data").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type Snapshot = typeof snapshots.$inferSelect;

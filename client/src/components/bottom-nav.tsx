@@ -22,6 +22,10 @@ import {
   ClipboardList,
   ChevronRight,
   ShieldCheck,
+  GraduationCap,
+  Dumbbell,
+  Users,
+  BarChart3,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -49,10 +53,19 @@ const moreNavSections = [
     ],
   },
   {
+    label: "Growth",
+    items: [
+      { title: "Academics", url: "/academics", icon: GraduationCap, description: "Classes, grades & progress", accent: "bg-indigo-50 text-indigo-600" },
+      { title: "Workouts", url: "/workouts", icon: Dumbbell, description: "Fitness & consistency", accent: "bg-orange-50 text-orange-600" },
+      { title: "Snapshots", url: "/snapshots", icon: BarChart3, description: "Progress over time", accent: "bg-teal-50 text-teal-600" },
+    ],
+  },
+  {
     label: "Personal",
     items: [
       { title: "Diary", url: "/diary", icon: BookOpen, description: "Private reflections", accent: "bg-amber-50 text-amber-600" },
       { title: "Leave Time", url: "/leave-time", icon: Clock, description: "Walk-out reminders", accent: "bg-violet-50 text-violet-600" },
+      { title: "Connections", url: "/connections", icon: Users, description: "Linked family accounts", accent: "bg-cyan-50 text-cyan-600" },
       { title: "Caregiver", url: "/settings", icon: ShieldCheck, description: "Manage caretaker access", accent: "bg-sky-50 text-sky-600" },
     ],
   },

@@ -1,6 +1,9 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
+import { db } from "./db";
+import { families, conversations, conversationParticipants } from "@shared/schema";
+import { eq } from "drizzle-orm";
 import { api, buildUrl } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
@@ -1558,6 +1561,391 @@ export async function registerRoutes(
       res.json(notes);
     } catch (err) {
       res.status(500).json({ message: "Failed to fetch care notes" });
+    }
+  });
+
+  // ============ OUTSIDE FAMILY CONNECTIONS ============
+
+  app.get('/api/family-connections', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const connections = await storage.getFamilyConnections(req.family.id);
+      const enriched = await Promise.all(connections.map(async (conn: any) => {
+        const otherFamilyId = conn.requestingFamilyId === req.family.id ? conn.targetFamilyId : conn.requestingFamilyId;
+        const [otherFamily] = await db.select({ name: families.name, id: families.id }).from(families).where(eq(families.id, otherFamilyId));
+        return { ...conn, otherFamily: otherFamily || null, direction: conn.requestingFamilyId === req.family.id ? 'sent' : 'received' };
+      }));
+      res.json(enriched);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch connections" });
+    }
+  });
+
+  app.post('/api/family-connections', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const { targetFamilyName, permissions } = req.body;
+      if (!targetFamilyName) return res.status(400).json({ message: "Family name required" });
+      const [targetFamily] = await db.select().from(families).where(eq(families.name, targetFamilyName));
+      if (!targetFamily) return res.status(404).json({ message: "Family not found" });
+      if (targetFamily.id === req.family.id) return res.status(400).json({ message: "Cannot connect to your own family" });
+      const existing = await storage.getFamilyConnectionByFamilies(req.family.id, targetFamily.id);
+      if (existing) return res.status(400).json({ message: "Connection already exists" });
+      const conn = await storage.createFamilyConnection({
+        requestingFamilyId: req.family.id,
+        targetFamilyId: targetFamily.id,
+        status: 'pending',
+        permissions: permissions || { sharedEvents: true, sharedWishlists: false, chat: false, careNotes: false },
+      });
+      res.json(conn);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create connection" });
+    }
+  });
+
+  app.patch('/api/family-connections/:id', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const { status, permissions } = req.body;
+      const updateData: any = {};
+      if (status) updateData.status = status;
+      if (permissions) updateData.permissions = permissions;
+      const conn = await storage.updateFamilyConnection(Number(req.params.id), updateData);
+      res.json(conn);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update connection" });
+    }
+  });
+
+  app.delete('/api/family-connections/:id', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      await storage.deleteFamilyConnection(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete connection" });
+    }
+  });
+
+  // ============ ACADEMIC TRACKING ============
+
+  app.get('/api/academics/classes', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const studentId = req.query.studentId as string || undefined;
+      const role = await storage.getMemberRole(req.family.id, userId);
+      if (role === 'Child' || role === 'Youth') {
+        const classes = await storage.getAcademicClasses(req.family.id, userId);
+        res.json(classes);
+      } else {
+        const classes = await storage.getAcademicClasses(req.family.id, studentId);
+        res.json(classes);
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch classes" });
+    }
+  });
+
+  app.post('/api/academics/classes', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const { name, teacherName, gradingScale, semester, studentId } = req.body;
+      if (!name) return res.status(400).json({ message: "Class name required" });
+      const userId = req.user.claims.sub;
+      const cls = await storage.createAcademicClass({
+        familyId: req.family.id,
+        studentId: studentId || userId,
+        name,
+        teacherName: teacherName || null,
+        gradingScale: gradingScale || 'percentage',
+        semester: semester || null,
+      });
+      res.json(cls);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create class" });
+    }
+  });
+
+  app.patch('/api/academics/classes/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const cls = await storage.updateAcademicClass(Number(req.params.id), req.body);
+      res.json(cls);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update class" });
+    }
+  });
+
+  app.delete('/api/academics/classes/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      await storage.deleteAcademicClass(Number(req.params.id), req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete class" });
+    }
+  });
+
+  app.get('/api/academics/classes/:classId/entries', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const entries = await storage.getAcademicEntries(Number(req.params.classId));
+      res.json(entries);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch entries" });
+    }
+  });
+
+  app.post('/api/academics/classes/:classId/entries', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const { type, title, score, maxScore, weight, notes } = req.body;
+      if (!title) return res.status(400).json({ message: "Title required" });
+      const entry = await storage.createAcademicEntry({
+        classId: Number(req.params.classId),
+        familyId: req.family.id,
+        type: type || 'assignment',
+        title,
+        score: score || null,
+        maxScore: maxScore || null,
+        weight: weight || null,
+        notes: notes || null,
+      });
+      res.json(entry);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create entry" });
+    }
+  });
+
+  app.patch('/api/academics/entries/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const entry = await storage.updateAcademicEntry(Number(req.params.id), req.body);
+      res.json(entry);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update entry" });
+    }
+  });
+
+  app.delete('/api/academics/entries/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      await storage.deleteAcademicEntry(Number(req.params.id));
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete entry" });
+    }
+  });
+
+  // ============ WORKOUT TRACKING ============
+
+  app.get('/api/workouts', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const targetUserId = req.query.userId as string || undefined;
+      const role = await storage.getMemberRole(req.family.id, userId);
+      if (targetUserId && targetUserId !== userId) {
+        if (role === 'Owner' || role === 'Adult') {
+          const targetRole = await storage.getMemberRole(req.family.id, targetUserId);
+          if (targetRole === 'Adult' || targetRole === 'Owner') {
+            const all = await storage.getWorkouts(req.family.id, targetUserId);
+            res.json(all.filter((w: any) => !w.isPrivate));
+          } else {
+            const all = await storage.getWorkouts(req.family.id, targetUserId);
+            res.json(all);
+          }
+        } else {
+          const all = await storage.getWorkouts(req.family.id, targetUserId);
+          res.json(all.filter((w: any) => !w.isPrivate));
+        }
+      } else {
+        const all = await storage.getWorkouts(req.family.id, userId);
+        res.json(all);
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch workouts" });
+    }
+  });
+
+  app.post('/api/workouts', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { type, duration, reps, sets, weight, distance, distanceUnit, notes, isPrivate, date } = req.body;
+      if (!type) return res.status(400).json({ message: "Workout type required" });
+      const workout = await storage.createWorkout({
+        familyId: req.family.id,
+        userId,
+        type,
+        duration: duration || null,
+        reps: reps || null,
+        sets: sets || null,
+        weight: weight || null,
+        distance: distance || null,
+        distanceUnit: distanceUnit || 'miles',
+        notes: notes || null,
+        isPrivate: isPrivate !== undefined ? isPrivate : true,
+        date: date ? new Date(date) : new Date(),
+      });
+      res.json(workout);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create workout" });
+    }
+  });
+
+  app.patch('/api/workouts/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const workout = await storage.updateWorkout(Number(req.params.id), req.body);
+      res.json(workout);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update workout" });
+    }
+  });
+
+  app.delete('/api/workouts/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      await storage.deleteWorkout(Number(req.params.id), req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete workout" });
+    }
+  });
+
+  // ============ CHAT ENHANCEMENTS ============
+
+  app.post('/api/conversations/:id/mute', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { duration } = req.body;
+      let until: Date | null = null;
+      if (duration === '1h') until = new Date(Date.now() + 60 * 60 * 1000);
+      else if (duration === '8h') until = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      else if (duration === '24h') until = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      else if (duration === '7d') until = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      else if (duration === 'indefinite') until = new Date('2099-12-31');
+      await storage.muteConversation(Number(req.params.id), userId, until);
+      res.json({ success: true, mutedUntil: until });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to mute conversation" });
+    }
+  });
+
+  app.post('/api/conversations/:id/unmute', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.muteConversation(Number(req.params.id), userId, null);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to unmute conversation" });
+    }
+  });
+
+  app.post('/api/conversations', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, participantIds, type } = req.body;
+      if (type === 'group') {
+        if (!name || !participantIds || participantIds.length < 2) {
+          return res.status(400).json({ message: "Group chats need a name and at least 2 participants" });
+        }
+        const allParticipants = [...new Set([userId, ...participantIds])];
+        const [conv] = await db.insert(conversations).values({
+          familyId: req.family.id,
+          type: 'group',
+          name,
+          status: 'active',
+          createdBy: userId,
+        }).returning();
+        for (const pid of allParticipants) {
+          await db.insert(conversationParticipants).values({
+            conversationId: conv.id,
+            userId: pid,
+          });
+        }
+        res.json(conv);
+      } else {
+        return res.status(400).json({ message: "Use the DM endpoint for direct messages" });
+      }
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  // ============ TEMPORARY ADMIN ============
+
+  app.patch('/api/family/members/:id/admin', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const { isTemporaryAdmin } = req.body;
+      const member = await storage.updateFamilyMember(Number(req.params.id), req.family.id, {
+        isTemporaryAdmin: !!isTemporaryAdmin,
+      });
+      res.json(member);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update admin status" });
+    }
+  });
+
+  // ============ ANNUAL SNAPSHOTS ============
+
+  app.get('/api/snapshots', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const type = req.query.type as string || undefined;
+      const snaps = await storage.getSnapshots(req.family.id, type);
+      res.json(snaps);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch snapshots" });
+    }
+  });
+
+  app.post('/api/snapshots/generate', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { type, period } = req.body;
+      if (!type || !period) return res.status(400).json({ message: "Type and period required" });
+
+      const now = new Date();
+      let startDate: Date;
+      if (type === 'weekly') {
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      } else if (type === 'monthly') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      } else {
+        startDate = new Date(now.getFullYear() - 1, 0, 1);
+      }
+
+      const [allExpenses, allGoals, allWorkoutsData, allSavings] = await Promise.all([
+        storage.getExpenses(req.family.id),
+        storage.getGoals(req.family.id),
+        storage.getWorkouts(req.family.id),
+        storage.getSavingsGoals(req.family.id),
+      ]);
+
+      const periodExpenses = allExpenses.filter((e: any) => new Date(e.date) >= startDate);
+      const totalSpent = periodExpenses.reduce((sum: number, e: any) => sum + parseFloat(e.amount || '0'), 0);
+      const categoryBreakdown: Record<string, number> = {};
+      periodExpenses.forEach((e: any) => {
+        const cat = e.category || 'Other';
+        categoryBreakdown[cat] = (categoryBreakdown[cat] || 0) + parseFloat(e.amount || '0');
+      });
+
+      const completedGoals = allGoals.filter((g: any) => g.status === 'completed').length;
+      const activeGoals = allGoals.filter((g: any) => g.status === 'active').length;
+
+      const periodWorkouts = allWorkoutsData.filter((w: any) => new Date(w.date) >= startDate);
+      const workoutTypes: Record<string, number> = {};
+      periodWorkouts.forEach((w: any) => {
+        workoutTypes[w.type] = (workoutTypes[w.type] || 0) + 1;
+      });
+
+      const totalSaved = allSavings.reduce((sum: number, s: any) => sum + parseFloat(s.currentAmount || '0'), 0);
+      const totalTarget = allSavings.reduce((sum: number, s: any) => sum + parseFloat(s.targetAmount || '0'), 0);
+
+      const snapshotData = {
+        spending: { total: totalSpent, categoryBreakdown, transactionCount: periodExpenses.length },
+        goals: { completed: completedGoals, active: activeGoals, total: allGoals.length },
+        workouts: { total: periodWorkouts.length, types: workoutTypes },
+        savings: { current: totalSaved, target: totalTarget, progress: totalTarget > 0 ? Math.round((totalSaved / totalTarget) * 100) : 0 },
+        generatedAt: now.toISOString(),
+      };
+
+      const snapshot = await storage.createSnapshot({
+        familyId: req.family.id,
+        userId,
+        type,
+        period,
+        data: snapshotData,
+      });
+      res.json(snapshot);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to generate snapshot" });
     }
   });
 

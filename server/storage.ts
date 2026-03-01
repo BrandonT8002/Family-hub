@@ -4,8 +4,10 @@ import {
   financialSchedule, savingsGoals, conversations, conversationParticipants, blocks,
   diaryEntries, diarySettings, goals, goalItems, goalCategories, wishlists, wishlistItems,
   leaveTimeSettings, leaveTimeOverrides, leaveTimeTemplates, caregivers, careNotes, familyInvites,
+  familyConnections, academicClasses, academicEntries, workouts, snapshots,
   type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage, type InsertDiaryEntry,
-  type Caregiver, type CareNote, type FamilyInvite
+  type Caregiver, type CareNote, type FamilyInvite,
+  type FamilyConnection, type AcademicClass, type AcademicEntry, type Workout, type Snapshot
 } from "@shared/schema";
 import { eq, desc, and, or, ne, inArray, isNull, asc } from "drizzle-orm";
 
@@ -101,6 +103,32 @@ export interface IStorage {
   useFamilyInvite(token: string, userId: string): Promise<FamilyInvite>;
   revokeFamilyInvite(id: number, familyId: number): Promise<void>;
   addFamilyMember(familyId: number, userId: string, role: string, displayName?: string, dateOfBirth?: Date): Promise<any>;
+  updateFamilyMember(id: number, familyId: number, data: any): Promise<any>;
+
+  getFamilyConnections(familyId: number): Promise<FamilyConnection[]>;
+  createFamilyConnection(data: any): Promise<FamilyConnection>;
+  updateFamilyConnection(id: number, data: any): Promise<FamilyConnection>;
+  deleteFamilyConnection(id: number): Promise<void>;
+  getFamilyConnectionByFamilies(familyId1: number, familyId2: number): Promise<FamilyConnection | null>;
+
+  getAcademicClasses(familyId: number, studentId?: string): Promise<AcademicClass[]>;
+  createAcademicClass(data: any): Promise<AcademicClass>;
+  updateAcademicClass(id: number, data: any): Promise<AcademicClass>;
+  deleteAcademicClass(id: number, familyId: number): Promise<void>;
+  getAcademicEntries(classId: number): Promise<AcademicEntry[]>;
+  createAcademicEntry(data: any): Promise<AcademicEntry>;
+  updateAcademicEntry(id: number, data: any): Promise<AcademicEntry>;
+  deleteAcademicEntry(id: number): Promise<void>;
+
+  getWorkouts(familyId: number, userId?: string): Promise<Workout[]>;
+  createWorkout(data: any): Promise<Workout>;
+  updateWorkout(id: number, data: any): Promise<Workout>;
+  deleteWorkout(id: number, familyId: number): Promise<void>;
+
+  getSnapshots(familyId: number, type?: string): Promise<Snapshot[]>;
+  createSnapshot(data: any): Promise<Snapshot>;
+
+  muteConversation(conversationId: number, userId: string, until: Date | null): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -820,6 +848,142 @@ export class DatabaseStorage implements IStorage {
       dateOfBirth: dateOfBirth || null,
     }).returning();
     return member;
+  }
+
+  async updateFamilyMember(id: number, familyId: number, data: any) {
+    const [member] = await db.update(familyMembers)
+      .set(data)
+      .where(and(eq(familyMembers.id, id), eq(familyMembers.familyId, familyId)))
+      .returning();
+    return member;
+  }
+
+  async getFamilyConnections(familyId: number) {
+    return db.select().from(familyConnections)
+      .where(or(
+        eq(familyConnections.requestingFamilyId, familyId),
+        eq(familyConnections.targetFamilyId, familyId)
+      ))
+      .orderBy(desc(familyConnections.createdAt));
+  }
+
+  async createFamilyConnection(data: any) {
+    const [conn] = await db.insert(familyConnections).values(data).returning();
+    return conn;
+  }
+
+  async updateFamilyConnection(id: number, data: any) {
+    const [conn] = await db.update(familyConnections).set(data).where(eq(familyConnections.id, id)).returning();
+    return conn;
+  }
+
+  async deleteFamilyConnection(id: number) {
+    await db.delete(familyConnections).where(eq(familyConnections.id, id));
+  }
+
+  async getFamilyConnectionByFamilies(familyId1: number, familyId2: number) {
+    const [conn] = await db.select().from(familyConnections)
+      .where(or(
+        and(eq(familyConnections.requestingFamilyId, familyId1), eq(familyConnections.targetFamilyId, familyId2)),
+        and(eq(familyConnections.requestingFamilyId, familyId2), eq(familyConnections.targetFamilyId, familyId1))
+      ));
+    return conn || null;
+  }
+
+  async getAcademicClasses(familyId: number, studentId?: string) {
+    if (studentId) {
+      return db.select().from(academicClasses)
+        .where(and(eq(academicClasses.familyId, familyId), eq(academicClasses.studentId, studentId)))
+        .orderBy(desc(academicClasses.createdAt));
+    }
+    return db.select().from(academicClasses)
+      .where(eq(academicClasses.familyId, familyId))
+      .orderBy(desc(academicClasses.createdAt));
+  }
+
+  async createAcademicClass(data: any) {
+    const [cls] = await db.insert(academicClasses).values(data).returning();
+    return cls;
+  }
+
+  async updateAcademicClass(id: number, data: any) {
+    const [cls] = await db.update(academicClasses).set(data).where(eq(academicClasses.id, id)).returning();
+    return cls;
+  }
+
+  async deleteAcademicClass(id: number, familyId: number) {
+    await db.delete(academicEntries).where(eq(academicEntries.classId, id));
+    await db.delete(academicClasses).where(and(eq(academicClasses.id, id), eq(academicClasses.familyId, familyId)));
+  }
+
+  async getAcademicEntries(classId: number) {
+    return db.select().from(academicEntries)
+      .where(eq(academicEntries.classId, classId))
+      .orderBy(desc(academicEntries.date));
+  }
+
+  async createAcademicEntry(data: any) {
+    const [entry] = await db.insert(academicEntries).values(data).returning();
+    return entry;
+  }
+
+  async updateAcademicEntry(id: number, data: any) {
+    const [entry] = await db.update(academicEntries).set(data).where(eq(academicEntries.id, id)).returning();
+    return entry;
+  }
+
+  async deleteAcademicEntry(id: number) {
+    await db.delete(academicEntries).where(eq(academicEntries.id, id));
+  }
+
+  async getWorkouts(familyId: number, userId?: string) {
+    if (userId) {
+      return db.select().from(workouts)
+        .where(and(eq(workouts.familyId, familyId), eq(workouts.userId, userId)))
+        .orderBy(desc(workouts.date));
+    }
+    return db.select().from(workouts)
+      .where(eq(workouts.familyId, familyId))
+      .orderBy(desc(workouts.date));
+  }
+
+  async createWorkout(data: any) {
+    const [w] = await db.insert(workouts).values(data).returning();
+    return w;
+  }
+
+  async updateWorkout(id: number, data: any) {
+    const [w] = await db.update(workouts).set(data).where(eq(workouts.id, id)).returning();
+    return w;
+  }
+
+  async deleteWorkout(id: number, familyId: number) {
+    await db.delete(workouts).where(and(eq(workouts.id, id), eq(workouts.familyId, familyId)));
+  }
+
+  async getSnapshots(familyId: number, type?: string) {
+    if (type) {
+      return db.select().from(snapshots)
+        .where(and(eq(snapshots.familyId, familyId), eq(snapshots.type, type)))
+        .orderBy(desc(snapshots.createdAt));
+    }
+    return db.select().from(snapshots)
+      .where(eq(snapshots.familyId, familyId))
+      .orderBy(desc(snapshots.createdAt));
+  }
+
+  async createSnapshot(data: any) {
+    const [s] = await db.insert(snapshots).values(data).returning();
+    return s;
+  }
+
+  async muteConversation(conversationId: number, userId: string, until: Date | null) {
+    await db.update(conversationParticipants)
+      .set({ mutedUntil: until })
+      .where(and(
+        eq(conversationParticipants.conversationId, conversationId),
+        eq(conversationParticipants.userId, userId)
+      ));
   }
 }
 

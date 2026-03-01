@@ -14,10 +14,13 @@ import {
 } from "@/hooks/use-chat";
 import { useAuth } from "@/hooks/use-auth";
 import { useCaregiverMode } from "@/components/layout";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useMutation } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Switch } from "@/components/ui/switch";
 import { 
   Send, 
   Users, 
@@ -41,6 +44,9 @@ import {
   Play,
   Pause,
   Square,
+  BellOff,
+  Bell,
+  UsersRound,
 } from "lucide-react";
 import {
   Dialog,
@@ -69,6 +75,9 @@ export default function Chat() {
   const [activeConvoId, setActiveConvoId] = useState<number | null>(null);
   const [content, setContent] = useState("");
   const [showNewDM, setShowNewDM] = useState(false);
+  const [showNewGroup, setShowNewGroup] = useState(false);
+  const [groupName, setGroupName] = useState("");
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState<string[]>([]);
   const [mobileShowMessages, setMobileShowMessages] = useState(false);
 
   const { data: messages, isLoading: msgsLoading } = useConversationMessages(activeConvoId);
@@ -152,6 +161,45 @@ export default function Chat() {
   const handleDeleteMsg = (msgId: number) => {
     deleteMsg.mutate(msgId);
   };
+
+  const muteConvo = useMutation({
+    mutationFn: async ({ id, duration }: { id: number; duration: string }) => {
+      await apiRequest("POST", `/api/conversations/${id}/mute`, { duration });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      toast({ title: "Taking space", description: "Notifications muted for this conversation." });
+    },
+  });
+
+  const unmuteConvo = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("POST", `/api/conversations/${id}/unmute`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      toast({ title: "Unmuted", description: "You'll receive notifications again." });
+    },
+  });
+
+  const createGroupChat = useMutation({
+    mutationFn: async ({ name, participantIds }: { name: string; participantIds: string[] }) => {
+      const res = await apiRequest("POST", "/api/conversations", { name, participantIds, type: "group" });
+      return res.json();
+    },
+    onSuccess: (conv: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      setActiveConvoId(conv.id);
+      setShowNewGroup(false);
+      setGroupName("");
+      setSelectedGroupMembers([]);
+      setMobileShowMessages(true);
+      toast({ title: "Group created" });
+    },
+    onError: (err: any) => {
+      toast({ title: "Failed to create group", description: err.message, variant: "destructive" });
+    },
+  });
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -295,6 +343,12 @@ export default function Chat() {
         <div className="p-4 border-b border-border/30">
           <div className="flex items-center justify-between mb-1">
             <h2 className="font-bold text-lg" data-testid="text-chat-title">Messages</h2>
+            <div className="flex gap-1">
+            {!isCaregiver && (
+              <Button variant="ghost" size="icon" className="rounded-xl" onClick={() => setShowNewGroup(true)} data-testid="button-new-group">
+                <UsersRound className="w-4 h-4" />
+              </Button>
+            )}
             <Dialog open={showNewDM} onOpenChange={setShowNewDM}>
               <DialogTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-xl" data-testid="button-new-dm">
@@ -348,9 +402,58 @@ export default function Chat() {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground">{isCaregiver ? "Direct messages with parents" : "Private and group conversations"}</p>
         </div>
+
+        {/* Group Chat Creation Dialog */}
+        <Dialog open={showNewGroup} onOpenChange={setShowNewGroup}>
+          <DialogContent className="rounded-2xl">
+            <DialogHeader>
+              <DialogTitle>New Group Chat</DialogTitle>
+              <DialogDescription>Create a group conversation with selected family members.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <Input
+                placeholder="Group name"
+                value={groupName}
+                onChange={(e) => setGroupName(e.target.value)}
+                className="rounded-xl"
+                data-testid="input-group-name"
+              />
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-muted-foreground">Select members</p>
+                {members?.filter((m: any) => m.userId !== user?.id).map((member: any) => (
+                  <label key={member.userId} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedGroupMembers.includes(member.userId)}
+                      onChange={(e) => {
+                        if (e.target.checked) setSelectedGroupMembers(prev => [...prev, member.userId]);
+                        else setSelectedGroupMembers(prev => prev.filter(id => id !== member.userId));
+                      }}
+                      className="rounded"
+                      data-testid={`checkbox-group-member-${member.userId}`}
+                    />
+                    <Avatar className="w-8 h-8">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs">{member.user?.firstName?.[0] || '?'}</AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-medium">{member.user?.firstName} {member.user?.lastName}</span>
+                  </label>
+                ))}
+              </div>
+              <Button
+                onClick={() => createGroupChat.mutate({ name: groupName, participantIds: selectedGroupMembers })}
+                disabled={!groupName.trim() || selectedGroupMembers.length < 2 || createGroupChat.isPending}
+                className="w-full rounded-xl"
+                data-testid="button-create-group"
+              >
+                {createGroupChat.isPending ? "Creating..." : "Create Group"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         <div className="flex-1 overflow-y-auto">
           {/* Pending Message Requests */}
