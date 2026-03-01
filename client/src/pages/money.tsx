@@ -161,10 +161,10 @@ export default function Money() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="bg-muted/50 p-1 rounded-xl">
-          <TabsTrigger value="overview" className="rounded-lg px-6">Overview</TabsTrigger>
-          <TabsTrigger value="schedule" className="rounded-lg px-6">Schedule</TabsTrigger>
-          <TabsTrigger value="goals" className="rounded-lg px-6">Savings Goals</TabsTrigger>
+        <TabsList className="bg-white/50 p-1 rounded-xl border border-white/20 backdrop-blur-sm">
+          <TabsTrigger value="overview" className="rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">Overview</TabsTrigger>
+          <TabsTrigger value="schedule" className="rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">Schedule</TabsTrigger>
+          <TabsTrigger value="goals" className="rounded-lg px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all">Savings Goals</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">

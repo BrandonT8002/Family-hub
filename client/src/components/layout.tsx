@@ -8,13 +8,24 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useLocation } from "wouter";
 
 export function Layout({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { data: family, isLoading: familyLoading } = useFamily();
   const createFamily = useCreateFamily();
   const [familyName, setFamilyName] = useState("");
+  const [location] = useLocation();
+
+  const getPastelBg = () => {
+    if (location === "/") return "bg-[#f0f7ff]"; // Pastel Blue
+    if (location === "/schedule") return "bg-[#fcf5ff]"; // Pastel Lavender
+    if (location === "/money") return "bg-[#fff5f7]"; // Pastel Rose
+    if (location.startsWith("/groceries")) return "bg-[#fffaf0]"; // Pastel Peach
+    if (location === "/chat") return "bg-[#f0fff4]"; // Pastel Mint
+    return "bg-background";
+  };
 
   if (authLoading) {
     return (
@@ -90,7 +101,7 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider style={style}>
-      <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
+      <div className={`flex h-screen w-full transition-colors duration-500 text-foreground overflow-hidden ${getPastelBg()}`}>
         <AppSidebar />
         <div className="flex flex-col flex-1 w-full relative overflow-hidden">
           <header className="flex lg:hidden items-center p-4 border-b border-border/50 glass z-10 sticky top-0">
@@ -98,14 +109,18 @@ export function Layout({ children }: { children: ReactNode }) {
             <h1 className="ml-4 font-display font-semibold text-lg">{family.name}</h1>
           </header>
           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            <motion.div 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="max-w-6xl mx-auto"
-            >
-              {children}
-            </motion.div>
+            <AnimatePresence mode="wait">
+              <motion.div 
+                key={location}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.3 }}
+                className="max-w-6xl mx-auto"
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </div>
