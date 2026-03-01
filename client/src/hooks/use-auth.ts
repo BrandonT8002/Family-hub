@@ -37,10 +37,15 @@ export function useAuth() {
     },
   });
 
+  const login = () => {
+    window.location.href = "/api/login";
+  };
+
   return {
     user,
     isLoading,
     isAuthenticated: !!user,
+    login,
     logout: logoutMutation.mutate,
     isLoggingOut: logoutMutation.isPending,
   };

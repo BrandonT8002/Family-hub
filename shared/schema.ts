@@ -2,7 +2,6 @@ import { pgTable, text, serial, integer, boolean, timestamp, numeric, jsonb } fr
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Re-export auth models
 export * from "./models/auth";
 import { users } from "./models/auth";
 
@@ -25,7 +24,9 @@ export const familyMembers = pgTable("family_members", {
   id: serial("id").primaryKey(),
   familyId: integer("family_id").references(() => families.id).notNull(),
   userId: text("user_id").references(() => users.id).notNull(),
-  role: text("role").notNull(), // Owner, Adult, Teen, Child, Caregiver
+  role: text("role").notNull(), // Owner, Adult, Teen, Youth, Child, Caregiver
+  displayName: text("display_name"),
+  dateOfBirth: timestamp("date_of_birth"),
 });
 
 export const events = pgTable("events", {
@@ -37,7 +38,7 @@ export const events = pgTable("events", {
   date: timestamp("date").notNull(),
   startTime: timestamp("start_time"),
   endTime: timestamp("end_time"),
-  recurrence: text("recurrence").notNull().default("One-time"), // One-time, Daily, Weekly, Monthly, Yearly
+  recurrence: text("recurrence").notNull().default("One-time"),
   isPersonal: boolean("is_personal").notNull().default(false),
   notes: text("notes"),
   location: text("location"),
@@ -53,7 +54,7 @@ export const expenses = pgTable("expenses", {
   description: text("description").notNull(),
   date: timestamp("date").defaultNow().notNull(),
   notes: text("notes"),
-  tag: text("tag"), // grocery, subscription, gas, etc.
+  tag: text("tag"),
 });
 
 export const financialSchedule = pgTable("financial_schedule", {
@@ -61,8 +62,8 @@ export const financialSchedule = pgTable("financial_schedule", {
   familyId: integer("family_id").references(() => families.id).notNull(),
   title: text("title").notNull(),
   amount: numeric("amount").notNull(),
-  type: text("type").notNull(), // One-time, Recurring
-  frequency: text("frequency"), // Weekly, Monthly, Yearly
+  type: text("type").notNull(),
+  frequency: text("frequency"),
   dueDate: timestamp("due_date").notNull(),
   isPayday: boolean("is_payday").default(false),
 });
@@ -80,7 +81,7 @@ export const groceryLists = pgTable("grocery_lists", {
   id: serial("id").primaryKey(),
   familyId: integer("family_id").references(() => families.id).notNull(),
   name: text("name").notNull(),
-  type: text("type").default("Needs"), // Wants vs Needs
+  type: text("type").default("Needs"),
   storeName: text("store_name"),
 });
 
@@ -95,14 +96,42 @@ export const groceryItems = pgTable("grocery_items", {
   assignedTo: text("assigned_to").references(() => users.id),
 });
 
-export const chatMessages = pgTable("chat_messages", {
+export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
   familyId: integer("family_id").references(() => families.id).notNull(),
-  senderId: text("sender_id").references(() => users.id).notNull(),
-  content: text("content").notNull(),
+  type: text("type").notNull().default("group"), // group, dm
+  name: text("name"),
+  status: text("status").notNull().default("active"), // active, pending (for message requests)
+  createdBy: text("created_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const conversationParticipants = pgTable("conversation_participants", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  joinedAt: timestamp("joined_at").defaultNow(),
+});
+
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").references(() => conversations.id),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  senderId: text("sender_id").references(() => users.id).notNull(),
+  content: text("content").notNull(),
+  isDeleted: boolean("is_deleted").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const blocks = pgTable("blocks", {
+  id: serial("id").primaryKey(),
+  blockerId: text("blocker_id").references(() => users.id).notNull(),
+  blockedId: text("blocked_id").references(() => users.id).notNull(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Insert schemas
 export const insertFamilySchema = createInsertSchema(families).omit({ id: true, createdAt: true });
 export type InsertFamily = z.infer<typeof insertFamilySchema>;
 export type Family = typeof families.$inferSelect;
@@ -123,6 +152,17 @@ export const insertGroceryItemSchema = createInsertSchema(groceryItems).omit({ i
 export type InsertGroceryItem = z.infer<typeof insertGroceryItemSchema>;
 export type GroceryItem = typeof groceryItems.$inferSelect;
 
-export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ id: true, createdAt: true });
+export const insertChatMessageSchema = createInsertSchema(chatMessages).omit({ id: true, createdAt: true, isDeleted: true });
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
+
+export const insertConversationSchema = createInsertSchema(conversations).omit({ id: true, createdAt: true });
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+
+export const insertBlockSchema = createInsertSchema(blocks).omit({ id: true, createdAt: true });
+export type InsertBlock = z.infer<typeof insertBlockSchema>;
+export type Block = typeof blocks.$inferSelect;
+
+export type FamilyMember = typeof familyMembers.$inferSelect;
+export type ConversationParticipant = typeof conversationParticipants.$inferSelect;

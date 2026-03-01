@@ -5,7 +5,10 @@ import {
   expenses,
   groceryLists,
   groceryItems,
-  chatMessages
+  chatMessages,
+  conversations,
+  blocks,
+  familyMembers,
 } from './schema';
 
 export const errorSchemas = {
@@ -28,13 +31,23 @@ export const api = {
     create: {
       method: 'POST' as const,
       path: '/api/family' as const,
-      input: z.object({ name: z.string(), themeConfig: z.any().optional() }),
+      input: z.object({ name: z.string(), themeConfig: z.any().optional(), fontFamily: z.string().optional() }),
       responses: {
         201: z.custom<typeof families.$inferSelect>(),
         400: errorSchemas.validation,
         401: errorSchemas.unauthorized,
       },
     }
+  },
+  familyMembers: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/family/members' as const,
+      responses: {
+        200: z.array(z.any()),
+        401: errorSchemas.unauthorized,
+      },
+    },
   },
   events: {
     list: {
@@ -205,6 +218,88 @@ export const api = {
         401: errorSchemas.unauthorized,
       }
     }
+  },
+  conversations: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/conversations' as const,
+      responses: {
+        200: z.array(z.any()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    createDM: {
+      method: 'POST' as const,
+      path: '/api/conversations/dm' as const,
+      input: z.object({ recipientId: z.string() }),
+      responses: {
+        201: z.any(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
+    accept: {
+      method: 'PATCH' as const,
+      path: '/api/conversations/:id/accept' as const,
+      input: z.object({}),
+      responses: {
+        200: z.any(),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    messages: {
+      method: 'GET' as const,
+      path: '/api/conversations/:id/messages' as const,
+      responses: {
+        200: z.array(z.any()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    sendMessage: {
+      method: 'POST' as const,
+      path: '/api/conversations/:id/messages' as const,
+      input: z.object({ content: z.string() }),
+      responses: {
+        201: z.any(),
+        400: errorSchemas.validation,
+        401: errorSchemas.unauthorized,
+      },
+    },
+    deleteMessage: {
+      method: 'DELETE' as const,
+      path: '/api/messages/:id' as const,
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        401: errorSchemas.unauthorized,
+      },
+    },
+  },
+  blocks: {
+    list: {
+      method: 'GET' as const,
+      path: '/api/blocks' as const,
+      responses: {
+        200: z.array(z.any()),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    create: {
+      method: 'POST' as const,
+      path: '/api/blocks' as const,
+      input: z.object({ blockedId: z.string() }),
+      responses: {
+        201: z.any(),
+        401: errorSchemas.unauthorized,
+      },
+    },
+    remove: {
+      method: 'DELETE' as const,
+      path: '/api/blocks/:blockedId' as const,
+      responses: {
+        200: z.object({ success: z.boolean() }),
+        401: errorSchemas.unauthorized,
+      },
+    },
   },
   chat: {
     list: {

@@ -1,44 +1,53 @@
 import { db } from "./db";
 import {
   families, familyMembers, events, expenses, groceryLists, groceryItems, chatMessages, users,
-  financialSchedule, savingsGoals,
+  financialSchedule, savingsGoals, conversations, conversationParticipants, blocks,
   type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage
 } from "@shared/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, or, ne, inArray } from "drizzle-orm";
 
 export interface IStorage {
-  // Family
   getFamilyForUser(userId: string): Promise<typeof families.$inferSelect | null>;
   createFamily(name: string, ownerId: string): Promise<typeof families.$inferSelect>;
   updateFamily(id: number, data: Partial<typeof families.$inferSelect>): Promise<typeof families.$inferSelect>;
-  
-  // Events
+
+  getFamilyMembers(familyId: number): Promise<any[]>;
+  getMemberRole(familyId: number, userId: string): Promise<string | null>;
+
   getEvents(familyId: number): Promise<(typeof events.$inferSelect)[]>;
   createEvent(event: InsertEvent): Promise<typeof events.$inferSelect>;
-  
-  // Expenses
+
   getExpenses(familyId: number): Promise<(typeof expenses.$inferSelect)[]>;
   createExpense(expense: any): Promise<typeof expenses.$inferSelect>;
-  
-  // Financial Schedule
+
   getFinancialSchedule(familyId: number): Promise<(typeof financialSchedule.$inferSelect)[]>;
   createFinancialSchedule(item: any): Promise<typeof financialSchedule.$inferSelect>;
 
-  // Savings Goals
   getSavingsGoals(familyId: number): Promise<(typeof savingsGoals.$inferSelect)[]>;
   createSavingsGoal(goal: any): Promise<typeof savingsGoals.$inferSelect>;
   updateSavingsGoal(id: number, currentAmount: string): Promise<typeof savingsGoals.$inferSelect>;
 
-  // Groceries
   getGroceryLists(familyId: number): Promise<(typeof groceryLists.$inferSelect)[]>;
   createGroceryList(list: InsertGroceryList): Promise<typeof groceryLists.$inferSelect>;
   getGroceryItems(listId: number): Promise<(typeof groceryItems.$inferSelect)[]>;
   createGroceryItem(item: InsertGroceryItem): Promise<typeof groceryItems.$inferSelect>;
   toggleGroceryItem(id: number, isChecked: boolean): Promise<typeof groceryItems.$inferSelect>;
 
-  // Chat
-  getChatMessages(familyId: number): Promise<any[]>;
+  getConversationsForUser(familyId: number, userId: string): Promise<any[]>;
+  getOrCreateGroupConversation(familyId: number): Promise<typeof conversations.$inferSelect>;
+  createDMConversation(familyId: number, creatorId: string, recipientId: string): Promise<typeof conversations.$inferSelect>;
+  getConversation(id: number): Promise<typeof conversations.$inferSelect | null>;
+  acceptConversation(id: number): Promise<typeof conversations.$inferSelect>;
+
+  getChatMessages(conversationId: number): Promise<any[]>;
+  getChatMessagesByFamily(familyId: number): Promise<any[]>;
   createChatMessage(message: InsertChatMessage): Promise<typeof chatMessages.$inferSelect>;
+  deleteMessage(id: number, userId: string): Promise<void>;
+
+  blockUser(blockerId: string, blockedId: string, familyId: number): Promise<typeof blocks.$inferSelect>;
+  unblockUser(blockerId: string, blockedId: string, familyId: number): Promise<void>;
+  getBlocks(userId: string, familyId: number): Promise<(typeof blocks.$inferSelect)[]>;
+  isBlocked(userId1: string, userId2: string, familyId: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -68,6 +77,35 @@ export class DatabaseStorage implements IStorage {
   async updateFamily(id: number, data: Partial<typeof families.$inferSelect>) {
     const [updated] = await db.update(families).set(data).where(eq(families.id, id)).returning();
     return updated;
+  }
+
+  async getFamilyMembers(familyId: number) {
+    const members = await db.select({
+      id: familyMembers.id,
+      familyId: familyMembers.familyId,
+      userId: familyMembers.userId,
+      role: familyMembers.role,
+      displayName: familyMembers.displayName,
+      dateOfBirth: familyMembers.dateOfBirth,
+      user: {
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+        profileImageUrl: users.profileImageUrl,
+      }
+    })
+    .from(familyMembers)
+    .innerJoin(users, eq(familyMembers.userId, users.id))
+    .where(eq(familyMembers.familyId, familyId));
+    return members;
+  }
+
+  async getMemberRole(familyId: number, userId: string) {
+    const [member] = await db.select().from(familyMembers).where(
+      and(eq(familyMembers.familyId, familyId), eq(familyMembers.userId, userId))
+    );
+    return member?.role || null;
   }
 
   async getEvents(familyId: number) {
@@ -134,7 +172,141 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getChatMessages(familyId: number) {
+  async getOrCreateGroupConversation(familyId: number) {
+    const [existing] = await db.select().from(conversations).where(
+      and(eq(conversations.familyId, familyId), eq(conversations.type, "group"))
+    );
+    if (existing) return existing;
+
+    const [conv] = await db.insert(conversations).values({
+      familyId,
+      type: "group",
+      name: "Family Chat",
+      status: "active",
+    }).returning();
+
+    const members = await db.select().from(familyMembers).where(eq(familyMembers.familyId, familyId));
+    for (const member of members) {
+      await db.insert(conversationParticipants).values({
+        conversationId: conv.id,
+        userId: member.userId,
+      });
+    }
+
+    return conv;
+  }
+
+  async getConversationsForUser(familyId: number, userId: string) {
+    const participantRows = await db.select()
+      .from(conversationParticipants)
+      .innerJoin(conversations, eq(conversationParticipants.conversationId, conversations.id))
+      .where(
+        and(
+          eq(conversationParticipants.userId, userId),
+          eq(conversations.familyId, familyId)
+        )
+      );
+
+    const result = [];
+    for (const row of participantRows) {
+      const conv = row.conversations;
+      const participants = await db.select({
+        userId: conversationParticipants.userId,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+      .from(conversationParticipants)
+      .innerJoin(users, eq(conversationParticipants.userId, users.id))
+      .where(eq(conversationParticipants.conversationId, conv.id));
+
+      const lastMsg = await db.select({
+        content: chatMessages.content,
+        createdAt: chatMessages.createdAt,
+        senderId: chatMessages.senderId,
+      })
+      .from(chatMessages)
+      .where(and(eq(chatMessages.conversationId, conv.id), eq(chatMessages.isDeleted, false)))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(1);
+
+      result.push({
+        ...conv,
+        participants,
+        lastMessage: lastMsg[0] || null,
+      });
+    }
+
+    return result;
+  }
+
+  async createDMConversation(familyId: number, creatorId: string, recipientId: string) {
+    const allConvs = await db.select()
+      .from(conversations)
+      .where(and(eq(conversations.familyId, familyId), eq(conversations.type, "dm")));
+
+    for (const conv of allConvs) {
+      const parts = await db.select().from(conversationParticipants)
+        .where(eq(conversationParticipants.conversationId, conv.id));
+      const userIds = parts.map(p => p.userId);
+      if (userIds.includes(creatorId) && userIds.includes(recipientId)) {
+        return conv;
+      }
+    }
+
+    const [conv] = await db.insert(conversations).values({
+      familyId,
+      type: "dm",
+      status: "pending",
+      createdBy: creatorId,
+    }).returning();
+
+    await db.insert(conversationParticipants).values([
+      { conversationId: conv.id, userId: creatorId },
+      { conversationId: conv.id, userId: recipientId },
+    ]);
+
+    return conv;
+  }
+
+  async getConversation(id: number) {
+    const [conv] = await db.select().from(conversations).where(eq(conversations.id, id));
+    return conv || null;
+  }
+
+  async acceptConversation(id: number) {
+    const [updated] = await db.update(conversations)
+      .set({ status: "active" })
+      .where(eq(conversations.id, id))
+      .returning();
+    return updated;
+  }
+
+  async getChatMessages(conversationId: number) {
+    const msgs = await db.select({
+      id: chatMessages.id,
+      conversationId: chatMessages.conversationId,
+      familyId: chatMessages.familyId,
+      senderId: chatMessages.senderId,
+      content: chatMessages.content,
+      isDeleted: chatMessages.isDeleted,
+      createdAt: chatMessages.createdAt,
+      user: {
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      }
+    })
+    .from(chatMessages)
+    .innerJoin(users, eq(chatMessages.senderId, users.id))
+    .where(and(eq(chatMessages.conversationId, conversationId), eq(chatMessages.isDeleted, false)))
+    .orderBy(desc(chatMessages.createdAt))
+    .limit(100);
+
+    return msgs.reverse();
+  }
+
+  async getChatMessagesByFamily(familyId: number) {
     const msgs = await db.select({
       id: chatMessages.id,
       familyId: chatMessages.familyId,
@@ -149,7 +321,7 @@ export class DatabaseStorage implements IStorage {
     })
     .from(chatMessages)
     .innerJoin(users, eq(chatMessages.senderId, users.id))
-    .where(eq(chatMessages.familyId, familyId))
+    .where(and(eq(chatMessages.familyId, familyId), eq(chatMessages.isDeleted, false)))
     .orderBy(desc(chatMessages.createdAt))
     .limit(50);
     
@@ -159,6 +331,42 @@ export class DatabaseStorage implements IStorage {
   async createChatMessage(message: InsertChatMessage) {
     const [newMsg] = await db.insert(chatMessages).values(message).returning();
     return newMsg;
+  }
+
+  async deleteMessage(id: number, userId: string) {
+    await db.update(chatMessages)
+      .set({ isDeleted: true })
+      .where(and(eq(chatMessages.id, id), eq(chatMessages.senderId, userId)));
+  }
+
+  async blockUser(blockerId: string, blockedId: string, familyId: number) {
+    const [block] = await db.insert(blocks).values({ blockerId, blockedId, familyId }).returning();
+    return block;
+  }
+
+  async unblockUser(blockerId: string, blockedId: string, familyId: number) {
+    await db.delete(blocks).where(
+      and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId), eq(blocks.familyId, familyId))
+    );
+  }
+
+  async getBlocks(userId: string, familyId: number) {
+    return await db.select().from(blocks).where(
+      and(eq(blocks.blockerId, userId), eq(blocks.familyId, familyId))
+    );
+  }
+
+  async isBlocked(userId1: string, userId2: string, familyId: number) {
+    const [block] = await db.select().from(blocks).where(
+      and(
+        or(
+          and(eq(blocks.blockerId, userId1), eq(blocks.blockedId, userId2)),
+          and(eq(blocks.blockerId, userId2), eq(blocks.blockedId, userId1))
+        ),
+        eq(blocks.familyId, familyId)
+      )
+    );
+    return !!block;
   }
 }
 

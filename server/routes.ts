@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
-import { api } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
@@ -9,11 +9,9 @@ export async function registerRoutes(
   httpServer: Server,
   app: Express
 ): Promise<Server> {
-  // Auth setup MUST be before other routes
   await setupAuth(app);
   registerAuthRoutes(app);
 
-  // Helper to ensure user has a family
   const requireFamily = async (req: any, res: any, next: any) => {
     const userId = req.user?.claims?.sub;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
@@ -23,7 +21,6 @@ export async function registerRoutes(
     next();
   };
 
-  // Seed data function
   async function seedMoneyData(familyId: number, userId: string) {
     const existingExpenses = await storage.getExpenses(familyId);
     if (existingExpenses.length === 0) {
@@ -39,6 +36,7 @@ export async function registerRoutes(
     }
   }
 
+  // Family
   app.patch(api.family.get.path, isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const family = await storage.updateFamily(req.family.id, req.body);
@@ -62,8 +60,11 @@ export async function registerRoutes(
       const input = api.family.create.input.parse(req.body);
       const userId = req.user.claims.sub;
       const family = await storage.createFamily(input.name, userId);
-      if (input.themeConfig) {
-        await storage.updateFamily(family.id, { themeConfig: input.themeConfig, fontFamily: input.fontFamily });
+      if (input.themeConfig || input.fontFamily) {
+        await storage.updateFamily(family.id, { 
+          themeConfig: input.themeConfig, 
+          fontFamily: input.fontFamily 
+        });
       }
       res.status(201).json(family);
     } catch (err) {
@@ -74,6 +75,13 @@ export async function registerRoutes(
     }
   });
 
+  // Family Members
+  app.get(api.familyMembers.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    const members = await storage.getFamilyMembers(req.family.id);
+    res.json(members);
+  });
+
+  // Events
   app.get(api.events.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
     const events = await storage.getEvents(req.family.id);
     res.json(events);
@@ -103,6 +111,7 @@ export async function registerRoutes(
     }
   });
 
+  // Expenses
   app.get(api.expenses.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
     const expenses = await storage.getExpenses(req.family.id);
     res.json(expenses);
@@ -127,6 +136,7 @@ export async function registerRoutes(
     }
   });
 
+  // Financial Schedule
   app.get(api.financialSchedule.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
     const schedule = await storage.getFinancialSchedule(req.family.id);
     res.json(schedule);
@@ -150,6 +160,7 @@ export async function registerRoutes(
     }
   });
 
+  // Savings Goals
   app.get(api.savingsGoals.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
     const goals = await storage.getSavingsGoals(req.family.id);
     res.json(goals);
@@ -186,6 +197,7 @@ export async function registerRoutes(
     }
   });
 
+  // Groceries
   app.get(api.groceryLists.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
     const lists = await storage.getGroceryLists(req.family.id);
     res.json(lists);
@@ -246,18 +258,162 @@ export async function registerRoutes(
     }
   });
 
+  // Conversations
+  app.get(api.conversations.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    await storage.getOrCreateGroupConversation(req.family.id);
+    const convs = await storage.getConversationsForUser(req.family.id, userId);
+    res.json(convs);
+  });
+
+  app.post(api.conversations.createDM.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const input = api.conversations.createDM.input.parse(req.body);
+      const userId = req.user.claims.sub;
+      
+      const blocked = await storage.isBlocked(userId, input.recipientId, req.family.id);
+      if (blocked) {
+        return res.status(400).json({ message: "Cannot message this user" });
+      }
+
+      const conv = await storage.createDMConversation(req.family.id, userId, input.recipientId);
+      res.status(201).json(conv);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  const requireConversationAccess = async (req: any, res: any) => {
+    const convId = Number(req.params.id);
+    const userId = req.user.claims.sub;
+    const conv = await storage.getConversation(convId);
+    if (!conv) { res.status(404).json({ message: "Conversation not found" }); return null; }
+    if (conv.familyId !== req.family.id) { res.status(403).json({ message: "Access denied" }); return null; }
+    const convos = await storage.getConversationsForUser(req.family.id, userId);
+    const hasAccess = convos.some((c: any) => c.id === convId);
+    if (!hasAccess) { res.status(403).json({ message: "Access denied" }); return null; }
+    return conv;
+  };
+
+  app.patch('/api/conversations/:id/accept', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const conv = await requireConversationAccess(req, res);
+      if (!conv) return;
+      const updated = await storage.acceptConversation(conv.id);
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to accept conversation" });
+    }
+  });
+
+  app.get('/api/conversations/:id/messages', isAuthenticated, requireFamily, async (req: any, res) => {
+    const conv = await requireConversationAccess(req, res);
+    if (!conv) return;
+    const messages = await storage.getChatMessages(conv.id);
+    res.json(messages);
+  });
+
+  app.post('/api/conversations/:id/messages', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const input = api.conversations.sendMessage.input.parse(req.body);
+      const userId = req.user.claims.sub;
+      const conv = await requireConversationAccess(req, res);
+      if (!conv) return;
+
+      if (conv.type === "dm") {
+        const convos = await storage.getConversationsForUser(req.family.id, userId);
+        const fullConv = convos.find((c: any) => c.id === conv.id);
+        const otherUser = fullConv?.participants?.find((p: any) => p.userId !== userId);
+        if (otherUser) {
+          const blocked = await storage.isBlocked(userId, otherUser.userId, req.family.id);
+          if (blocked) return res.status(400).json({ message: "Cannot message this user" });
+        }
+      }
+
+      if (conv.status === "pending" && conv.createdBy === userId) {
+        // Creator can send messages to pending conversations
+      } else if (conv.status === "pending") {
+        return res.status(400).json({ message: "You must accept this conversation request first" });
+      }
+
+      const msg = await storage.createChatMessage({
+        conversationId: conv.id,
+        familyId: req.family.id,
+        senderId: userId,
+        content: input.content,
+      });
+      res.status(201).json(msg);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.delete('/api/messages/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteMessage(Number(req.params.id), userId);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete message" });
+    }
+  });
+
+  // Blocks
+  app.get(api.blocks.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const blocksList = await storage.getBlocks(userId, req.family.id);
+    res.json(blocksList);
+  });
+
+  app.post(api.blocks.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const input = api.blocks.create.input.parse(req.body);
+      const userId = req.user.claims.sub;
+      const block = await storage.blockUser(userId, input.blockedId, req.family.id);
+      res.status(201).json(block);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ message: err.errors[0].message });
+      }
+      throw err;
+    }
+  });
+
+  app.delete('/api/blocks/:blockedId', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.unblockUser(userId, req.params.blockedId, req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to unblock user" });
+    }
+  });
+
+  // Legacy chat endpoints (backward compatibility - only returns group chat messages)
   app.get(api.chat.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
-    const msgs = await storage.getChatMessages(req.family.id);
+    const groupConv = await storage.getOrCreateGroupConversation(req.family.id);
+    const msgs = await storage.getChatMessages(groupConv.id);
     res.json(msgs);
   });
 
   app.post(api.chat.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const input = api.chat.create.input.parse(req.body);
+      const userId = req.user.claims.sub;
+      
+      const groupConv = await storage.getOrCreateGroupConversation(req.family.id);
+
       const msg = await storage.createChatMessage({
+        conversationId: groupConv.id,
         content: input.content,
         familyId: req.family.id,
-        senderId: req.user.claims.sub,
+        senderId: userId,
       });
       res.status(201).json(msg);
     } catch (err) {
