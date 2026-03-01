@@ -21,6 +21,7 @@ import {
   Clock,
   ClipboardList,
   ChevronRight,
+  ShieldCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -52,6 +53,7 @@ const moreNavSections = [
     items: [
       { title: "Diary", url: "/diary", icon: BookOpen, description: "Private reflections", accent: "bg-amber-50 text-amber-600" },
       { title: "Leave Time", url: "/leave-time", icon: Clock, description: "Walk-out reminders", accent: "bg-violet-50 text-violet-600" },
+      { title: "Caregiver", url: "/settings", icon: ShieldCheck, description: "Manage caretaker access", accent: "bg-sky-50 text-sky-600" },
     ],
   },
 ];
@@ -162,7 +164,9 @@ export function BottomNav() {
                 </div>
               ))}
 
-              <div className="px-4 pb-2">
+              <div className="border-t border-gray-100/80 mx-4 mt-1" />
+
+              <div className="px-4 py-2">
                 <Link href="/settings">
                   <button
                     className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl transition-all duration-200 ${
