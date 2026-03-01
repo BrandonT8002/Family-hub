@@ -26,9 +26,11 @@ export function Layout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
 
   const THEMES = [
-    { name: "Classic", colors: { home: "#b3d9ff", schedule: "#e0b3ff", money: "#ffb3c1", groceries: "#ffd9b3", chat: "#b3ffcc" } },
-    { name: "Muted", colors: { home: "#d1e9ff", schedule: "#f3e8ff", money: "#ffe4e9", groceries: "#fff2e6", chat: "#e6ffed" } },
-    { name: "Sunset", colors: { home: "#ffedd5", schedule: "#fee2e2", money: "#fef3c7", groceries: "#f0fdf4", chat: "#eff6ff" } },
+    { name: "Pastel", colors: { home: "#b3d9ff", schedule: "#e0b3ff", money: "#ffb3c1", groceries: "#ffd9b3", chat: "#b3ffcc" } },
+    { name: "Colorful", colors: { home: "#3b82f6", schedule: "#8b5cf6", money: "#ef4444", groceries: "#f59e0b", chat: "#10b981" } },
+    { name: "Basic", colors: { home: "#f8fafc", schedule: "#f1f5f9", money: "#e2e8f0", groceries: "#cbd5e1", chat: "#94a3b8" } },
+    { name: "Mono", colors: { home: "#ffffff", schedule: "#f3f4f6", money: "#e5e7eb", groceries: "#d1d5db", chat: "#9ca3af" } },
+    { name: "Night", colors: { home: "#1e293b", schedule: "#334155", money: "#475569", groceries: "#64748b", chat: "#94a3b8" } },
   ];
 
   const getPastelBg = () => {
