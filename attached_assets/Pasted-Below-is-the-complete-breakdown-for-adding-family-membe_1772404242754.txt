@@ -1,0 +1,349 @@
+Below is the complete breakdown for adding family members, including:
+	•	Age-based rules
+	•	Email requirements
+	•	Permission layers
+	•	Tier limits
+	•	Caregiver limits
+	•	Outside family connections
+	•	Capacity enforcement
+	•	Removal rules
+
+This is the finalized Family version structure.
+
+⸻
+
+FAMILYHUB — ADDING FAMILY MEMBERS (Full System Breakdown)
+
+Core Philosophy
+
+Adding a member should:
+
+• Be structured
+• Be age-aware
+• Be permission-based
+• Respect autonomy
+• Protect minors
+• Prevent loopholes
+
+The system must balance:
+
+Family unity
+Individual privacy
+Parental responsibility
+Teen independence
+
+⸻
+
+STEP 1 — Owner Invites Member
+
+Owner goes to:
+
+Settings → Members → Add Member
+
+Options:
+
+• Add Adult (18+)
+• Add Teen (15–17)
+• Add Youth (13–14)
+• Add Child (12 and under)
+• Add Caregiver (separate system)
+
+The age selection determines permissions automatically.
+
+⸻
+
+AGE-BASED STRUCTURE
+
+⸻
+
+1. Adult (18+)
+
+Requirements
+
+• Full name
+• Date of birth
+• Email required
+• Password created by user
+
+Permissions
+
+• Full personal privacy
+• Private diary
+• Private schedule
+• Private goals
+• Private financial entries
+• Full chat access
+• Can leave family and create their own account
+
+Owner Cannot:
+
+• View adult private diary
+• View adult private chats
+• View adult private financial entries
+• See who they are chatting with
+
+Adults are autonomous.
+
+⸻
+
+2. Teen (15–17)
+
+Designed as transitional adulthood.
+
+Requirements
+
+• Name
+• Date of birth
+• Email required (owner approves at invite stage)
+
+Default Permissions
+
+• Personal schedule
+• Private diary
+• Private chat
+• Can create goals
+• Can choose what to share
+
+Owner Controls
+
+• Financial visibility
+• Outside-family communication
+• Media sharing settings
+• Shared schedule editing
+
+Owner cannot:
+• Automatically read diary
+• Automatically see private schedule
+• Automatically see private chats
+
+If diary access requested:
+Teen must approve entry-by-entry.
+
+⸻
+
+3. Youth (13–14)
+
+More structured than teens.
+
+Requirements
+
+• Name
+• Date of birth
+• Email optional but encouraged
+• Owner approval required for email integration
+
+Permissions
+
+• Personal schedule
+• Personal goals
+• Chat with approval
+• Diary (private by default)
+
+Owner controls:
+• Financial access
+• Media sharing
+• Outside-family messaging
+• Schedule sharing
+
+At 13:
+Prompt appears to integrate email (with owner approval).
+
+⸻
+
+4. Child (12 and Under)
+
+Simplified onboarding.
+
+Requirements
+
+• Name
+• Date of birth
+• No email required
+• Username + password created by owner
+
+Permissions
+
+• Limited schedule
+• Limited goals
+• Limited chat
+• No outside family messaging
+• No financial visibility
+
+Notifications:
+• Allowed only if owner permits
+• No engagement-based nudges
+
+If deleted:
+• Data retained 1 year (if subscription active)
+• Re-add possible during retention window
+
+⸻
+
+FAMILY TIERS (Capacity Rules)
+
+The owner selects tier during signup.
+
+⸻
+
+Family Core
+
+Up to 2 members
+1 caregiver slot
+
+⸻
+
+Family Plus
+
+Up to 5 members
+2 caregiver slots
+
+⸻
+
+Family Extended
+
+Up to 10 members
+4 caregiver slots
+
+⸻
+
+Important Rules:
+
+• Members cannot exceed tier capacity
+• If at capacity, owner must remove member fully before adding new one
+• Removed member has 24-hour transfer window
+• After 24 hours → removed permanently from system
+
+If owner upgrades tier:
+Capacity expands immediately.
+
+If owner downgrades:
+Must remove members before downgrade takes effect.
+
+⸻
+
+CAREGIVER ADDITION (Separate from Family Member)
+
+Caregivers:
+
+• Do not count as full family member
+• Limited access
+• Assigned to specific child
+• Cannot view finances
+• Cannot view diary
+• Cannot view private chats
+• Cannot alter permissions
+
+Caregiver slots are tier-dependent.
+
+⸻
+
+OUTSIDE FAMILY CONNECTIONS
+
+Families can connect with other families.
+
+This is NOT merging households.
+
+⸻
+
+How It Works
+
+Owner → Connect to Another Family → Send Request
+
+Both owners must approve.
+
+Once connected:
+
+They can:
+
+• Share specific wishlists
+• Coordinate gifts
+• Schedule exchanges
+• Chat between families
+
+They cannot:
+
+• See each other’s finances
+• See goals
+• See private schedule
+• See diary
+• See member permissions
+
+Connections are limited and must be mutually accepted.
+
+Owner can revoke connection anytime.
+
+⸻
+
+MEMBER REMOVAL RULES
+
+If owner removes member:
+
+• 24-hour file transfer window
+• After 24 hours → removed completely
+• No residual access
+• No hidden association
+
+If member leaves voluntarily:
+
+• They can create their own family account
+• Their personal data stays with them
+• Shared data remains with family
+
+If owner deletes account:
+
+• Entire household enters grace period
+• Data retained 1 year
+• Requires re-subscription to restore
+
+⸻
+
+PERMISSION SUMMARY MATRIX
+
+Adults:
+Full privacy
+
+15–17:
+High autonomy, limited financial control
+
+13–14:
+Moderate autonomy, owner-controlled sharing
+
+12 & Under:
+Owner-controlled environment
+
+Caregiver:
+Assigned, limited, temporary
+
+Outside Family:
+Shared by permission only
+
+⸻
+
+WHY THIS STRUCTURE MATTERS
+
+It:
+
+• Protects minors
+• Respects adults
+• Encourages teen growth
+• Prevents surveillance culture
+• Prevents loopholes
+• Keeps tiers meaningful
+• Prevents account sharing abuse
+
+⸻
+
+EMOTIONAL INTENT
+
+Adding a family member should feel:
+
+• Structured
+• Secure
+• Fair
+• Thoughtful
+
+Not:
+
+• Overwhelming
+• Controlling
+• Complicated

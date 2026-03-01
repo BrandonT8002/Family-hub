@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useEffect } from "react";
-import { Paintbrush, Palette, Check, RefreshCcw, Type, UserPlus, Shield, X, Trash2, Edit2 } from "lucide-react";
+import { Paintbrush, Palette, Check, RefreshCcw, Type, UserPlus, Shield, X, Trash2, Edit2, Link2, Copy, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useCaregivers, useAddCaregiver, useRevokeCaregiver, useUpdateCaregiver } from "@/hooks/use-caregivers";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { format } from "date-fns";
 
 const FONTS = [
   { name: "Bricolage Grotesque", value: "'Bricolage Grotesque', sans-serif" },
@@ -23,96 +25,96 @@ const FONTS = [
 ];
 
 const DEFAULT_THEME = {
-  home: "#f0f4f8",
-  schedule: "#f3f0f8",
-  money: "#f8f0f0",
-  groceries: "#f5f3ee",
-  chat: "#eef5f2",
-  diary: "#f7f3ee",
-  goals: "#eef4f0",
-  wishlists: "#f6f0f4",
-  leaveTime: "#f0f5f2"
+  home: "#e8ecf1",
+  schedule: "#e2e7ef",
+  money: "#e5e9f0",
+  groceries: "#dfe5ed",
+  chat: "#e0e6ee",
+  diary: "#e6eaf0",
+  goals: "#e1e7ee",
+  wishlists: "#e4e8f0",
+  leaveTime: "#e2e8ef"
 };
 
 const THEME_PRESETS = [
   {
-    name: "Soft Cloud",
-    description: "Whisper-light tints",
+    name: "Slate & Steel",
+    description: "Modern and sophisticated",
     colors: DEFAULT_THEME
   },
   {
-    name: "Warm Sand",
-    description: "Cozy earth tones",
+    name: "Warm Clay",
+    description: "Rich earth tones",
     colors: {
-      home: "#f5f0e8",
-      schedule: "#f0ebe3",
-      money: "#f3ece4",
-      groceries: "#efe8de",
-      chat: "#eee9e0",
-      diary: "#f2ebe1",
-      goals: "#edeae2",
-      wishlists: "#f4ede5",
-      leaveTime: "#f0ebe3"
+      home: "#ede5db",
+      schedule: "#e8ddd0",
+      money: "#ebdfd3",
+      groceries: "#e5d8ca",
+      chat: "#e6dacf",
+      diary: "#ead9cb",
+      goals: "#e3d8cc",
+      wishlists: "#ece0d5",
+      leaveTime: "#e7dbd0"
     }
   },
   {
-    name: "Ocean Mist",
-    description: "Cool, calm waters",
+    name: "Deep Ocean",
+    description: "Bold blues and teals",
     colors: {
-      home: "#edf2f7",
-      schedule: "#e8eef6",
-      money: "#eef0f5",
-      groceries: "#e9eff5",
-      chat: "#e6eef4",
-      diary: "#eef1f6",
-      goals: "#e8eff3",
-      wishlists: "#edf0f6",
-      leaveTime: "#e9f0f4"
+      home: "#dbe8ef",
+      schedule: "#d4e2ed",
+      money: "#dce6ec",
+      groceries: "#d1e1ea",
+      chat: "#cde0ea",
+      diary: "#dde7ed",
+      goals: "#d0dfe8",
+      wishlists: "#d8e4ec",
+      leaveTime: "#d2e2ea"
     }
   },
   {
-    name: "Lavender Dusk",
-    description: "Soft twilight hues",
+    name: "Royal Plum",
+    description: "Rich purple depth",
     colors: {
-      home: "#f2eff8",
-      schedule: "#eeeaf6",
-      money: "#f4eef3",
-      groceries: "#f0ecf2",
-      chat: "#ede9f3",
-      diary: "#f3eff5",
-      goals: "#eeeaf2",
-      wishlists: "#f5eff6",
-      leaveTime: "#efedf4"
+      home: "#e8e0f0",
+      schedule: "#e2daea",
+      money: "#ebe0ec",
+      groceries: "#e0d8e6",
+      chat: "#ddd6e8",
+      diary: "#e6deec",
+      goals: "#dfd8e5",
+      wishlists: "#e9e0ee",
+      leaveTime: "#e1dbe9"
     }
   },
   {
-    name: "Forest Morning",
-    description: "Fresh, natural greens",
+    name: "Evergreen",
+    description: "Deep forest vibes",
     colors: {
-      home: "#eef4f0",
-      schedule: "#ecf2ee",
-      money: "#f2f0ec",
-      groceries: "#eaf2ec",
-      chat: "#e8f0eb",
-      diary: "#f0eee8",
-      goals: "#e9f1eb",
-      wishlists: "#f0ede9",
-      leaveTime: "#eaf2ed"
+      home: "#dae8e0",
+      schedule: "#d3e2da",
+      money: "#e0e2d8",
+      groceries: "#cfe0d6",
+      chat: "#ccddd4",
+      diary: "#dfe0d3",
+      goals: "#cdddd5",
+      wishlists: "#dde0d4",
+      leaveTime: "#d0e0d7"
     }
   },
   {
     name: "Monochrome",
     description: "Clean and minimal",
     colors: {
-      home: "#f8f9fa",
-      schedule: "#f3f4f6",
-      money: "#f1f2f4",
-      groceries: "#eef0f2",
-      chat: "#f0f1f3",
-      diary: "#f2f3f5",
-      goals: "#eff0f2",
-      wishlists: "#f1f2f4",
-      leaveTime: "#f3f4f6"
+      home: "#eaebec",
+      schedule: "#e4e5e7",
+      money: "#e2e3e5",
+      groceries: "#dfe0e2",
+      chat: "#e1e2e4",
+      diary: "#e3e4e6",
+      goals: "#e0e1e3",
+      wishlists: "#e2e3e5",
+      leaveTime: "#e4e5e7"
     }
   },
   {
@@ -309,8 +311,183 @@ export default function Settings() {
         </div>
       </div>
 
+      {isOwner && <InviteManagement familyId={family.id} />}
       {isOwner && <CaregiverManagement familyId={family.id} />}
     </div>
+  );
+}
+
+function InviteManagement({ familyId }: { familyId: number }) {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [inviteRole, setInviteRole] = useState("Adult");
+  const [inviteName, setInviteName] = useState("");
+  const [expiresInDays, setExpiresInDays] = useState("7");
+
+  const { data: invites, isLoading } = useQuery({
+    queryKey: ['/api/family-invites'],
+  });
+
+  const createInvite = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/family-invites", {
+        role: inviteRole,
+        displayName: inviteName.trim() || undefined,
+        expiresInDays: expiresInDays === "never" ? undefined : Number(expiresInDays),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/family-invites'] });
+      setInviteName("");
+      toast({ title: "Invite link created!" });
+    },
+    onError: () => toast({ title: "Failed to create invite", variant: "destructive" }),
+  });
+
+  const revokeInvite = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/family-invites/${id}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/family-invites'] });
+      toast({ title: "Invite revoked" });
+    },
+  });
+
+  const copyLink = (token: string) => {
+    const url = `${window.location.origin}/join/${token}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: "Link copied!" });
+  };
+
+  const activeInvites = (invites as any[])?.filter((i: any) => i.status === "pending") || [];
+  const usedInvites = (invites as any[])?.filter((i: any) => i.status !== "pending") || [];
+
+  return (
+    <Card className="rounded-3xl border-0 shadow-lg mt-8" data-testid="card-invite-management">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Link2 className="w-5 h-5" />
+          Invite Family Members
+        </CardTitle>
+        <CardDescription>Generate invite links for family members to join. They'll sign in and enter their age.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold">Name (optional)</label>
+            <Input
+              value={inviteName}
+              onChange={e => setInviteName(e.target.value)}
+              placeholder="e.g. Mom, Dad, Alex"
+              className="rounded-xl h-10"
+              data-testid="input-invite-name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold">Role</label>
+            <Select value={inviteRole} onValueChange={setInviteRole}>
+              <SelectTrigger className="rounded-xl h-10" data-testid="select-invite-role">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Adult">Adult</SelectItem>
+                <SelectItem value="Teen">Teen</SelectItem>
+                <SelectItem value="Youth">Youth</SelectItem>
+                <SelectItem value="Child">Child</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold">Expires</label>
+            <Select value={expiresInDays} onValueChange={setExpiresInDays}>
+              <SelectTrigger className="rounded-xl h-10" data-testid="select-invite-expires">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 day</SelectItem>
+                <SelectItem value="3">3 days</SelectItem>
+                <SelectItem value="7">7 days</SelectItem>
+                <SelectItem value="30">30 days</SelectItem>
+                <SelectItem value="never">Never</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <Button
+          onClick={() => createInvite.mutate()}
+          disabled={createInvite.isPending}
+          className="rounded-xl font-bold"
+          data-testid="button-create-invite"
+        >
+          {createInvite.isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <UserPlus className="w-4 h-4 mr-2" />}
+          Generate Invite Link
+        </Button>
+
+        {activeInvites.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Active invites</p>
+            {activeInvites.map((inv: any) => (
+              <div key={inv.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/50" data-testid={`invite-row-${inv.id}`}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold truncate" data-testid={`text-invite-name-${inv.id}`}>
+                      {inv.displayName || "Unnamed invite"}
+                    </p>
+                    <Badge variant="outline" className="text-[10px] shrink-0" data-testid={`badge-invite-role-${inv.id}`}>
+                      {inv.role}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {inv.expiresAt ? `Expires ${format(new Date(inv.expiresAt), 'MMM d')}` : "No expiration"}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 shrink-0 ml-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyLink(inv.token)}
+                    className="rounded-lg h-8"
+                    data-testid={`button-copy-invite-${inv.id}`}
+                  >
+                    <Copy className="w-3.5 h-3.5 mr-1" />
+                    Copy
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => revokeInvite.mutate(inv.id)}
+                    className="rounded-lg h-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                    data-testid={`button-revoke-invite-${inv.id}`}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {usedInvites.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Past invites</p>
+            {usedInvites.slice(0, 5).map((inv: any) => (
+              <div key={inv.id} className="flex items-center justify-between p-3 rounded-xl bg-muted/30 opacity-60" data-testid={`invite-past-${inv.id}`}>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{inv.displayName || "Unnamed"}</p>
+                  <p className="text-xs text-muted-foreground">{inv.status === "used" ? "Accepted" : "Revoked"}</p>
+                </div>
+                <Badge variant={inv.status === "used" ? "default" : "destructive"} className="text-[10px]">
+                  {inv.status}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -323,6 +500,7 @@ function CaregiverManagement({ familyId }: { familyId: number }) {
   const { data: members } = useQuery({ queryKey: ["/api/family/members"] });
 
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [cgUserId, setCgUserId] = useState("");
   const [cgDisplayName, setCgDisplayName] = useState("");
   const [cgAccessType, setCgAccessType] = useState("ongoing");
@@ -369,6 +547,36 @@ function CaregiverManagement({ familyId }: { familyId: number }) {
       onSuccess: () => {
         toast({ title: "Access revoked", description: `${name} no longer has access.` });
       },
+    });
+  };
+
+  const startEdit = (cg: any) => {
+    const perms = (cg.permissions as any) || {};
+    setEditingId(cg.id);
+    setCgAccessType(cg.accessType || "ongoing");
+    setCgAssignedChildren((cg.assignedChildIds as number[]) || []);
+    setCgScheduleAccess(perms.scheduleAccess || "shared_events");
+    setCgChatEnabled(perms.chatEnabled ?? true);
+    setCgCareNotesEnabled(perms.careNotesEnabled ?? true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingId) return;
+    updateCaregiver.mutate({ id: editingId,
+      accessType: cgAccessType,
+      assignedChildIds: cgAssignedChildren,
+      permissions: {
+        scheduleAccess: cgScheduleAccess,
+        chatEnabled: cgChatEnabled,
+        careNotesEnabled: cgCareNotesEnabled,
+        mediaUpload: false,
+      },
+    }, {
+      onSuccess: () => {
+        toast({ title: "Caregiver updated" });
+        setEditingId(null);
+      },
+      onError: () => toast({ title: "Failed to update", variant: "destructive" }),
     });
   };
 
@@ -518,6 +726,7 @@ function CaregiverManagement({ familyId }: { familyId: number }) {
           <div className="space-y-3">
             {activeCaregivers.map((cg: any) => {
               const perms = (cg.permissions as any) || {};
+              const isEditing = editingId === cg.id;
               return (
                 <div key={cg.id} className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm" data-testid={`caregiver-${cg.id}`}>
                   <div className="flex items-center justify-between mb-2">
@@ -532,21 +741,111 @@ function CaregiverManagement({ familyId }: { familyId: number }) {
                         </Badge>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRevoke(cg.id, cg.displayName || `User ${cg.userId}`)}
-                      className="text-red-400 hover:text-red-600 rounded-xl h-8 px-2"
-                      data-testid={`button-revoke-${cg.id}`}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => isEditing ? setEditingId(null) : startEdit(cg)}
+                        className="rounded-xl h-8 px-2"
+                        data-testid={`button-edit-${cg.id}`}
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRevoke(cg.id, cg.displayName || `User ${cg.userId}`)}
+                        className="text-red-400 hover:text-red-600 rounded-xl h-8 px-2"
+                        data-testid={`button-revoke-${cg.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {perms.chatEnabled && <Badge variant="outline" className="text-[9px] rounded-lg">Chat</Badge>}
-                    {perms.careNotesEnabled && <Badge variant="outline" className="text-[9px] rounded-lg">Care Notes</Badge>}
-                    <Badge variant="outline" className="text-[9px] rounded-lg capitalize">{(perms.scheduleAccess || "").replace(/_/g, " ")}</Badge>
-                  </div>
+
+                  {isEditing ? (
+                    <div className="space-y-3 mt-3 pt-3 border-t border-slate-100">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-600">Access Duration</label>
+                        <Select value={cgAccessType} onValueChange={setCgAccessType}>
+                          <SelectTrigger className="rounded-xl h-10" data-testid="select-edit-access-type">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="one-day">One Day</SelectItem>
+                            <SelectItem value="weekend">Weekend</SelectItem>
+                            <SelectItem value="weekly">Weekly (Recurring)</SelectItem>
+                            <SelectItem value="ongoing">Ongoing</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {childMembers.length > 0 && (
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-slate-600">Assigned Children</label>
+                          <div className="flex flex-wrap gap-2">
+                            {childMembers.map((child: any) => {
+                              const selected = cgAssignedChildren.includes(child.id);
+                              return (
+                                <button
+                                  key={child.id}
+                                  onClick={() => setCgAssignedChildren(selected
+                                    ? cgAssignedChildren.filter((id) => id !== child.id)
+                                    : [...cgAssignedChildren, child.id]
+                                  )}
+                                  className={`px-3 py-1.5 rounded-xl text-sm font-bold border-2 transition-all ${
+                                    selected ? "border-teal-400 bg-teal-50 text-teal-700" : "border-slate-200 bg-white text-slate-600"
+                                  }`}
+                                  data-testid={`button-edit-assign-child-${child.id}`}
+                                >
+                                  {child.displayName || child.user?.firstName || "Child"}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-600">Schedule Access</label>
+                        <Select value={cgScheduleAccess} onValueChange={setCgScheduleAccess}>
+                          <SelectTrigger className="rounded-xl h-10" data-testid="select-edit-schedule-access">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            <SelectItem value="assigned_only">Assigned events only</SelectItem>
+                            <SelectItem value="child_schedule">Child's schedule</SelectItem>
+                            <SelectItem value="shared_events">Shared family events</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="flex items-center justify-between py-1">
+                        <label className="text-xs font-bold text-slate-600">Can message parents</label>
+                        <Switch checked={cgChatEnabled} onCheckedChange={setCgChatEnabled} data-testid="switch-edit-chat" />
+                      </div>
+
+                      <div className="flex items-center justify-between py-1">
+                        <label className="text-xs font-bold text-slate-600">Can log care notes</label>
+                        <Switch checked={cgCareNotesEnabled} onCheckedChange={setCgCareNotesEnabled} data-testid="switch-edit-care-notes" />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button onClick={handleSaveEdit} disabled={updateCaregiver.isPending} className="rounded-xl h-9 font-bold flex-1" data-testid="button-save-edit">
+                          {updateCaregiver.isPending ? "Saving..." : "Save Changes"}
+                        </Button>
+                        <Button variant="outline" onClick={() => setEditingId(null)} className="rounded-xl h-9" data-testid="button-cancel-edit">
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {perms.chatEnabled && <Badge variant="outline" className="text-[9px] rounded-lg">Chat</Badge>}
+                      {perms.careNotesEnabled && <Badge variant="outline" className="text-[9px] rounded-lg">Care Notes</Badge>}
+                      <Badge variant="outline" className="text-[9px] rounded-lg capitalize">{(perms.scheduleAccess || "").replace(/_/g, " ")}</Badge>
+                    </div>
+                  )}
                 </div>
               );
             })}

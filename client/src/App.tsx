@@ -19,6 +19,7 @@ import LeaveTime from "@/pages/leave-time";
 import Settings from "@/pages/settings";
 import CaregiverDashboard from "@/pages/caregiver-dashboard";
 import CareNotesPage from "@/pages/care-notes";
+import JoinFamily from "@/pages/join";
 
 function HomeSwitcher() {
   const { isCaregiver } = useCaregiverMode();
@@ -59,7 +60,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Router />
+        <Switch>
+          <Route path="/join/:token" component={JoinFamily} />
+          <Route>{() => <Router />}</Route>
+        </Switch>
       </TooltipProvider>
     </QueryClientProvider>
   );

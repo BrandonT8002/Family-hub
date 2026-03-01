@@ -3,9 +3,9 @@ import {
   families, familyMembers, events, expenses, groceryLists, groceryItems, chatMessages, users,
   financialSchedule, savingsGoals, conversations, conversationParticipants, blocks,
   diaryEntries, diarySettings, goals, goalItems, goalCategories, wishlists, wishlistItems,
-  leaveTimeSettings, leaveTimeOverrides, leaveTimeTemplates, caregivers, careNotes,
+  leaveTimeSettings, leaveTimeOverrides, leaveTimeTemplates, caregivers, careNotes, familyInvites,
   type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage, type InsertDiaryEntry,
-  type Caregiver, type CareNote
+  type Caregiver, type CareNote, type FamilyInvite
 } from "@shared/schema";
 import { eq, desc, and, or, ne, inArray, isNull, asc } from "drizzle-orm";
 
@@ -93,6 +93,13 @@ export interface IStorage {
   getCareNotes(familyId: number, childId?: number): Promise<CareNote[]>;
   getCareNotesForCaregiver(caregiverId: number): Promise<CareNote[]>;
   createCareNote(data: any): Promise<CareNote>;
+
+  createFamilyInvite(data: any): Promise<FamilyInvite>;
+  getFamilyInvites(familyId: number): Promise<FamilyInvite[]>;
+  getFamilyInviteByToken(token: string): Promise<FamilyInvite | null>;
+  useFamilyInvite(token: string, userId: string): Promise<FamilyInvite>;
+  revokeFamilyInvite(id: number, familyId: number): Promise<void>;
+  addFamilyMember(familyId: number, userId: string, role: string, displayName?: string, dateOfBirth?: Date): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -767,6 +774,45 @@ export class DatabaseStorage implements IStorage {
     if (!cg) return null;
     const [family] = await db.select().from(families).where(eq(families.id, cg.familyId));
     return family || null;
+  }
+
+  async createFamilyInvite(data: any) {
+    const [invite] = await db.insert(familyInvites).values(data).returning();
+    return invite;
+  }
+
+  async getFamilyInvites(familyId: number) {
+    return db.select().from(familyInvites).where(eq(familyInvites.familyId, familyId)).orderBy(desc(familyInvites.createdAt));
+  }
+
+  async getFamilyInviteByToken(token: string) {
+    const [invite] = await db.select().from(familyInvites).where(eq(familyInvites.token, token));
+    return invite || null;
+  }
+
+  async useFamilyInvite(token: string, userId: string) {
+    const [invite] = await db.update(familyInvites)
+      .set({ status: "used", usedBy: userId })
+      .where(eq(familyInvites.token, token))
+      .returning();
+    return invite;
+  }
+
+  async revokeFamilyInvite(id: number, familyId: number) {
+    await db.update(familyInvites)
+      .set({ status: "revoked" })
+      .where(and(eq(familyInvites.id, id), eq(familyInvites.familyId, familyId)));
+  }
+
+  async addFamilyMember(familyId: number, userId: string, role: string, displayName?: string, dateOfBirth?: Date) {
+    const [member] = await db.insert(familyMembers).values({
+      familyId,
+      userId,
+      role,
+      displayName: displayName || null,
+      dateOfBirth: dateOfBirth || null,
+    }).returning();
+    return member;
   }
 }
 

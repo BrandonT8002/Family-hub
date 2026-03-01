@@ -13,6 +13,7 @@ import {
   useUploadMedia,
 } from "@/hooks/use-chat";
 import { useAuth } from "@/hooks/use-auth";
+import { useCaregiverMode } from "@/components/layout";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Chat() {
   const { user } = useAuth();
+  const { isCaregiver } = useCaregiverMode();
   const { data: convos, isLoading: convosLoading } = useConversations();
   const { data: members } = useFamilyMembers();
   const { data: blocksList } = useBlocks();
@@ -305,14 +307,22 @@ export default function Chat() {
                   <DialogDescription>Choose a family member to start a private conversation with.</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2 mt-2">
-                  {members?.filter((m: any) => m.userId !== user?.id).length === 0 ? (
+                  {members?.filter((m: any) => {
+                    if (m.userId === user?.id) return false;
+                    if (isCaregiver && !["Adult", "Owner"].includes(m.role)) return false;
+                    return true;
+                  }).length === 0 ? (
                     <div className="text-center py-8 text-muted-foreground">
                       <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm font-medium">No other family members yet</p>
-                      <p className="text-xs mt-1">Invite members from Settings to start chatting</p>
+                      <p className="text-sm font-medium">{isCaregiver ? "No parents available to message" : "No other family members yet"}</p>
+                      <p className="text-xs mt-1">{isCaregiver ? "Contact the family owner for help" : "Invite members from Settings to start chatting"}</p>
                     </div>
                   ) : (
-                    members?.filter((m: any) => m.userId !== user?.id).map((member: any) => (
+                    members?.filter((m: any) => {
+                      if (m.userId === user?.id) return false;
+                      if (isCaregiver && !["Adult", "Owner"].includes(m.role)) return false;
+                      return true;
+                    }).map((member: any) => (
                       <button
                         key={member.userId}
                         onClick={() => handleStartDM(member.userId)}
@@ -339,7 +349,7 @@ export default function Chat() {
               </DialogContent>
             </Dialog>
           </div>
-          <p className="text-xs text-muted-foreground">Private and group conversations</p>
+          <p className="text-xs text-muted-foreground">{isCaregiver ? "Direct messages with parents" : "Private and group conversations"}</p>
         </div>
 
         <div className="flex-1 overflow-y-auto">

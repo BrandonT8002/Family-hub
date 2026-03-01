@@ -19,57 +19,57 @@ import {
 
 const THEME_PRESETS = [
   {
-    name: "Soft Cloud",
-    description: "Whisper-light tints",
+    name: "Slate & Steel",
+    description: "Modern and sophisticated",
     colors: {
-      home: "#f0f4f8", schedule: "#f3f0f8", money: "#f8f0f0",
-      groceries: "#f5f3ee", chat: "#eef5f2", diary: "#f7f3ee",
-      goals: "#eef4f0", wishlists: "#f6f0f4", leaveTime: "#f0f5f2"
+      home: "#e8ecf1", schedule: "#e2e7ef", money: "#e5e9f0",
+      groceries: "#dfe5ed", chat: "#e0e6ee", diary: "#e6eaf0",
+      goals: "#e1e7ee", wishlists: "#e4e8f0", leaveTime: "#e2e8ef"
     }
   },
   {
-    name: "Warm Sand",
-    description: "Cozy earth tones",
+    name: "Warm Clay",
+    description: "Rich earth tones",
     colors: {
-      home: "#f5f0e8", schedule: "#f0ebe3", money: "#f3ece4",
-      groceries: "#efe8de", chat: "#eee9e0", diary: "#f2ebe1",
-      goals: "#edeae2", wishlists: "#f4ede5", leaveTime: "#f0ebe3"
+      home: "#ede5db", schedule: "#e8ddd0", money: "#ebdfd3",
+      groceries: "#e5d8ca", chat: "#e6dacf", diary: "#ead9cb",
+      goals: "#e3d8cc", wishlists: "#ece0d5", leaveTime: "#e7dbd0"
     }
   },
   {
-    name: "Ocean Mist",
-    description: "Cool, calm waters",
+    name: "Deep Ocean",
+    description: "Bold blues and teals",
     colors: {
-      home: "#edf2f7", schedule: "#e8eef6", money: "#eef0f5",
-      groceries: "#e9eff5", chat: "#e6eef4", diary: "#eef1f6",
-      goals: "#e8eff3", wishlists: "#edf0f6", leaveTime: "#e9f0f4"
+      home: "#dbe8ef", schedule: "#d4e2ed", money: "#dce6ec",
+      groceries: "#d1e1ea", chat: "#cde0ea", diary: "#dde7ed",
+      goals: "#d0dfe8", wishlists: "#d8e4ec", leaveTime: "#d2e2ea"
     }
   },
   {
-    name: "Lavender Dusk",
-    description: "Soft twilight hues",
+    name: "Royal Plum",
+    description: "Rich purple depth",
     colors: {
-      home: "#f2eff8", schedule: "#eeeaf6", money: "#f4eef3",
-      groceries: "#f0ecf2", chat: "#ede9f3", diary: "#f3eff5",
-      goals: "#eeeaf2", wishlists: "#f5eff6", leaveTime: "#efedf4"
+      home: "#e8e0f0", schedule: "#e2daea", money: "#ebe0ec",
+      groceries: "#e0d8e6", chat: "#ddd6e8", diary: "#e6deec",
+      goals: "#dfd8e5", wishlists: "#e9e0ee", leaveTime: "#e1dbe9"
     }
   },
   {
-    name: "Forest Morning",
-    description: "Fresh, natural greens",
+    name: "Evergreen",
+    description: "Deep forest vibes",
     colors: {
-      home: "#eef4f0", schedule: "#ecf2ee", money: "#f2f0ec",
-      groceries: "#eaf2ec", chat: "#e8f0eb", diary: "#f0eee8",
-      goals: "#e9f1eb", wishlists: "#f0ede9", leaveTime: "#eaf2ed"
+      home: "#dae8e0", schedule: "#d3e2da", money: "#e0e2d8",
+      groceries: "#cfe0d6", chat: "#ccddd4", diary: "#dfe0d3",
+      goals: "#cdddd5", wishlists: "#dde0d4", leaveTime: "#d0e0d7"
     }
   },
   {
     name: "Monochrome",
     description: "Clean and minimal",
     colors: {
-      home: "#f8f9fa", schedule: "#f3f4f6", money: "#f1f2f4",
-      groceries: "#eef0f2", chat: "#f0f1f3", diary: "#f2f3f5",
-      goals: "#eff0f2", wishlists: "#f1f2f4", leaveTime: "#f3f4f6"
+      home: "#eaebec", schedule: "#e4e5e7", money: "#e2e3e5",
+      groceries: "#dfe0e2", chat: "#e1e2e4", diary: "#e3e4e6",
+      goals: "#e0e1e3", wishlists: "#e2e3e5", leaveTime: "#e4e5e7"
     }
   },
   {

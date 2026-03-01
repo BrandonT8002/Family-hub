@@ -382,6 +382,23 @@ export type LeaveTimeSettings = typeof leaveTimeSettings.$inferSelect;
 export type LeaveTimeOverride = typeof leaveTimeOverrides.$inferSelect;
 export type LeaveTimeTemplate = typeof leaveTimeTemplates.$inferSelect;
 
+export const familyInvites = pgTable("family_invites", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  invitedBy: text("invited_by").references(() => users.id).notNull(),
+  token: text("token").notNull().unique(),
+  role: text("role").notNull().default("Adult"),
+  displayName: text("display_name"),
+  status: text("status").notNull().default("pending"),
+  usedBy: text("used_by"),
+  expiresAt: timestamp("expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertFamilyInviteSchema = createInsertSchema(familyInvites).omit({ id: true, createdAt: true, status: true, usedBy: true });
+export type InsertFamilyInvite = z.infer<typeof insertFamilyInviteSchema>;
+export type FamilyInvite = typeof familyInvites.$inferSelect;
+
 export const insertCaregiverSchema = createInsertSchema(caregivers).omit({ id: true, createdAt: true });
 export type InsertCaregiver = z.infer<typeof insertCaregiverSchema>;
 export type Caregiver = typeof caregivers.$inferSelect;

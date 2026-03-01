@@ -9,6 +9,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import express from "express";
+import crypto from "crypto";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -443,6 +444,15 @@ export async function registerRoutes(
   // Conversations
   app.get(api.conversations.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
     const userId = req.user.claims.sub;
+
+    if (req.isCaregiver) {
+      const perms = (req.caregiverRecord?.permissions as any) || {};
+      if (!perms.chatEnabled) return res.json([]);
+      const convs = await storage.getConversationsForUser(req.family.id, userId);
+      const dmOnly = convs.filter((c: any) => c.type === "dm");
+      return res.json(dmOnly);
+    }
+
     await storage.getOrCreateGroupConversation(req.family.id);
     const convs = await storage.getConversationsForUser(req.family.id, userId);
     res.json(convs);
@@ -452,6 +462,16 @@ export async function registerRoutes(
     try {
       const input = api.conversations.createDM.input.parse(req.body);
       const userId = req.user.claims.sub;
+
+      if (req.isCaregiver) {
+        const perms = (req.caregiverRecord?.permissions as any) || {};
+        if (!perms.chatEnabled) return res.status(403).json({ message: "Chat is not enabled for your caregiver access" });
+        const members = await storage.getFamilyMembers(req.family.id);
+        const recipient = members.find((m: any) => m.userId === input.recipientId);
+        if (!recipient || !["Adult", "Owner"].includes(recipient.role)) {
+          return res.status(403).json({ message: "Caregivers can only message adult family members" });
+        }
+      }
       
       const blocked = await storage.isBlocked(userId, input.recipientId, req.family.id);
       if (blocked) {
@@ -1224,6 +1244,85 @@ export async function registerRoutes(
       res.json(result.filter(Boolean));
     } catch (err) {
       res.status(500).json({ message: "Failed to fetch family leave times" });
+    }
+  });
+
+  // ============ FAMILY INVITES ============
+
+  app.post('/api/family-invites', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const { role, displayName, expiresInDays } = req.body;
+      const token = crypto.randomBytes(24).toString('hex');
+      const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86400000) : null;
+      const invite = await storage.createFamilyInvite({
+        familyId: req.family.id,
+        invitedBy: req.user.claims.sub,
+        token,
+        role: role || "Adult",
+        displayName: displayName || null,
+        expiresAt,
+      });
+      res.status(201).json(invite);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create invite" });
+    }
+  });
+
+  app.get('/api/family-invites', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const invites = await storage.getFamilyInvites(req.family.id);
+      res.json(invites);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch invites" });
+    }
+  });
+
+  app.delete('/api/family-invites/:id', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      await storage.revokeFamilyInvite(Number(req.params.id), req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to revoke invite" });
+    }
+  });
+
+  app.get('/api/invite/:token', async (req: any, res) => {
+    try {
+      const invite = await storage.getFamilyInviteByToken(req.params.token);
+      if (!invite) return res.status(404).json({ message: "Invite not found" });
+      if (invite.status !== "pending") return res.status(410).json({ message: "Invite is no longer valid" });
+      if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) return res.status(410).json({ message: "Invite has expired" });
+      const family = await storage.getFamilyForUser(invite.invitedBy);
+      res.json({
+        familyName: family?.name || "a family",
+        role: invite.role,
+        displayName: invite.displayName,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch invite" });
+    }
+  });
+
+  app.post('/api/invite/:token/accept', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const invite = await storage.getFamilyInviteByToken(req.params.token);
+      if (!invite) return res.status(404).json({ message: "Invite not found" });
+      if (invite.status !== "pending") return res.status(410).json({ message: "Invite is no longer valid" });
+      if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) return res.status(410).json({ message: "Invite has expired" });
+
+      const existing = await storage.getFamilyForUser(userId);
+      if (existing) return res.status(400).json({ message: "You are already part of a family" });
+
+      const { displayName, dateOfBirth } = req.body;
+      const dob = dateOfBirth ? new Date(dateOfBirth) : undefined;
+
+      await storage.addFamilyMember(invite.familyId, userId, invite.role, displayName || invite.displayName, dob);
+      await storage.useFamilyInvite(invite.token, userId);
+
+      res.json({ success: true, familyId: invite.familyId });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to accept invite" });
     }
   });
 
