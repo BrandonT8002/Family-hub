@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useFamily } from "@/hooks/use-family";
+import { useCaregiverMode } from "./layout";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,7 @@ import {
   MoreHorizontal,
   X,
   Clock,
+  ClipboardList,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -26,6 +28,13 @@ const primaryNav = [
   { title: "Schedule", url: "/schedule", icon: CalendarDays },
   { title: "Chat", url: "/chat", icon: MessageSquare },
   { title: "Shopping", url: "/groceries", icon: ShoppingCart },
+];
+
+const caregiverPrimaryNav = [
+  { title: "Home", url: "/", icon: Home },
+  { title: "Schedule", url: "/schedule", icon: CalendarDays },
+  { title: "Notes", url: "/care-notes", icon: ClipboardList },
+  { title: "Chat", url: "/chat", icon: MessageSquare },
 ];
 
 const moreNav = [
@@ -41,6 +50,7 @@ export function BottomNav() {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const { data: family } = useFamily();
+  const { isCaregiver } = useCaregiverMode();
   const [moreOpen, setMoreOpen] = useState(false);
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -76,12 +86,13 @@ export function BottomNav() {
   const isActive = (url: string) =>
     url === "/" ? location === "/" : location.startsWith(url);
 
-  const isMoreActive = moreNav.some((item) => isActive(item.url));
+  const navItems = isCaregiver ? caregiverPrimaryNav : primaryNav;
+  const isMoreActive = !isCaregiver && moreNav.some((item) => isActive(item.url));
 
   return (
     <>
       <AnimatePresence>
-        {moreOpen && (
+        {moreOpen && !isCaregiver && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -94,7 +105,7 @@ export function BottomNav() {
       </AnimatePresence>
 
       <AnimatePresence>
-        {moreOpen && (
+        {moreOpen && !isCaregiver && (
           <motion.div
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
@@ -166,7 +177,7 @@ export function BottomNav() {
           data-testid="bottom-nav"
         >
           <div className="bg-white/80 backdrop-blur-2xl rounded-[1.75rem] shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-white/60 px-2 py-1.5 flex items-center justify-around">
-            {primaryNav.map((item) => {
+            {navItems.map((item) => {
               const active = isActive(item.url);
               return (
                 <Link key={item.url} href={item.url}>
@@ -194,31 +205,33 @@ export function BottomNav() {
               );
             })}
 
-            <button
-              onClick={() => setMoreOpen(!moreOpen)}
-              className={`relative flex flex-col items-center gap-0.5 py-2 px-4 rounded-2xl transition-all duration-300 ${
-                moreOpen || isMoreActive
-                  ? "text-primary"
-                  : "text-gray-400 active:scale-90"
-              }`}
-              data-testid="nav-more"
-            >
-              {(moreOpen || isMoreActive) && (
-                <motion.div
-                  layoutId={moreOpen ? undefined : "nav-pill"}
-                  className="absolute inset-0 bg-primary/10 rounded-2xl"
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                />
-              )}
-              {moreOpen ? (
-                <X className="w-5 h-5 relative z-10 stroke-[2.5]" />
-              ) : (
-                <MoreHorizontal className={`w-5 h-5 relative z-10 ${isMoreActive ? "stroke-[2.5]" : ""}`} />
-              )}
-              <span className={`text-[10px] relative z-10 leading-none ${moreOpen || isMoreActive ? "font-bold" : "font-medium"}`}>
-                More
-              </span>
-            </button>
+            {!isCaregiver && (
+              <button
+                onClick={() => setMoreOpen(!moreOpen)}
+                className={`relative flex flex-col items-center gap-0.5 py-2 px-4 rounded-2xl transition-all duration-300 ${
+                  moreOpen || isMoreActive
+                    ? "text-primary"
+                    : "text-gray-400 active:scale-90"
+                }`}
+                data-testid="nav-more"
+              >
+                {(moreOpen || isMoreActive) && (
+                  <motion.div
+                    layoutId={moreOpen ? undefined : "nav-pill"}
+                    className="absolute inset-0 bg-primary/10 rounded-2xl"
+                    transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  />
+                )}
+                {moreOpen ? (
+                  <X className="w-5 h-5 relative z-10 stroke-[2.5]" />
+                ) : (
+                  <MoreHorizontal className={`w-5 h-5 relative z-10 ${isMoreActive ? "stroke-[2.5]" : ""}`} />
+                )}
+                <span className={`text-[10px] relative z-10 leading-none ${moreOpen || isMoreActive ? "font-bold" : "font-medium"}`}>
+                  More
+                </span>
+              </button>
+            )}
           </div>
         </nav>
       </motion.div>

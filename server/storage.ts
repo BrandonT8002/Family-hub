@@ -3,8 +3,9 @@ import {
   families, familyMembers, events, expenses, groceryLists, groceryItems, chatMessages, users,
   financialSchedule, savingsGoals, conversations, conversationParticipants, blocks,
   diaryEntries, diarySettings, goals, goalItems, goalCategories, wishlists, wishlistItems,
-  leaveTimeSettings, leaveTimeOverrides, leaveTimeTemplates,
-  type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage, type InsertDiaryEntry
+  leaveTimeSettings, leaveTimeOverrides, leaveTimeTemplates, caregivers, careNotes,
+  type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage, type InsertDiaryEntry,
+  type Caregiver, type CareNote
 } from "@shared/schema";
 import { eq, desc, and, or, ne, inArray, isNull, asc } from "drizzle-orm";
 
@@ -81,6 +82,17 @@ export interface IStorage {
   createWishlistItem(data: any): Promise<typeof wishlistItems.$inferSelect>;
   updateWishlistItem(id: number, data: any): Promise<typeof wishlistItems.$inferSelect>;
   deleteWishlistItem(id: number): Promise<void>;
+
+  getCaregivers(familyId: number): Promise<Caregiver[]>;
+  getCaregiverByUserId(familyId: number, userId: string): Promise<Caregiver | null>;
+  getCaregiverById(id: number): Promise<Caregiver | null>;
+  addCaregiver(data: any): Promise<Caregiver>;
+  updateCaregiver(id: number, familyId: number, data: any): Promise<Caregiver>;
+  revokeCaregiver(id: number, familyId: number): Promise<void>;
+
+  getCareNotes(familyId: number, childId?: number): Promise<CareNote[]>;
+  getCareNotesForCaregiver(caregiverId: number): Promise<CareNote[]>;
+  createCareNote(data: any): Promise<CareNote>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -700,6 +712,57 @@ export class DatabaseStorage implements IStorage {
 
   async deleteLeaveTimeTemplate(id: number, familyId: number, userId: string) {
     await db.delete(leaveTimeTemplates).where(and(eq(leaveTimeTemplates.id, id), eq(leaveTimeTemplates.familyId, familyId), eq(leaveTimeTemplates.userId, userId)));
+  }
+
+  async getCaregivers(familyId: number) {
+    return db.select().from(caregivers).where(eq(caregivers.familyId, familyId)).orderBy(desc(caregivers.createdAt));
+  }
+
+  async getCaregiverByUserId(familyId: number, userId: string) {
+    const [cg] = await db.select().from(caregivers).where(and(eq(caregivers.familyId, familyId), eq(caregivers.userId, userId), ne(caregivers.status, "revoked")));
+    return cg || null;
+  }
+
+  async getCaregiverById(id: number) {
+    const [cg] = await db.select().from(caregivers).where(eq(caregivers.id, id));
+    return cg || null;
+  }
+
+  async addCaregiver(data: any) {
+    const [cg] = await db.insert(caregivers).values(data).returning();
+    return cg;
+  }
+
+  async updateCaregiver(id: number, familyId: number, data: any) {
+    const [cg] = await db.update(caregivers).set(data).where(and(eq(caregivers.id, id), eq(caregivers.familyId, familyId))).returning();
+    return cg;
+  }
+
+  async revokeCaregiver(id: number, familyId: number) {
+    await db.update(caregivers).set({ status: "revoked" }).where(and(eq(caregivers.id, id), eq(caregivers.familyId, familyId)));
+  }
+
+  async getCareNotes(familyId: number, childId?: number) {
+    if (childId) {
+      return db.select().from(careNotes).where(and(eq(careNotes.familyId, familyId), eq(careNotes.childId, childId))).orderBy(desc(careNotes.noteTime));
+    }
+    return db.select().from(careNotes).where(eq(careNotes.familyId, familyId)).orderBy(desc(careNotes.noteTime));
+  }
+
+  async getCareNotesForCaregiver(caregiverId: number) {
+    return db.select().from(careNotes).where(eq(careNotes.caregiverId, caregiverId)).orderBy(desc(careNotes.noteTime));
+  }
+
+  async createCareNote(data: any) {
+    const [note] = await db.insert(careNotes).values(data).returning();
+    return note;
+  }
+
+  async getFamilyForCaregiver(userId: string) {
+    const [cg] = await db.select().from(caregivers).where(and(eq(caregivers.userId, userId), ne(caregivers.status, "revoked")));
+    if (!cg) return null;
+    const [family] = await db.select().from(families).where(eq(families.id, cg.familyId));
+    return family || null;
   }
 }
 

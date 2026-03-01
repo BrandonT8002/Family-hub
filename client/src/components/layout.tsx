@@ -1,6 +1,7 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, createContext, useContext } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useFamily, useCreateFamily } from "@/hooks/use-family";
+import { useCaregiverStatus } from "@/hooks/use-caregivers";
 import { BottomNav } from "./bottom-nav";
 import LandingPage from "@/pages/landing";
 import { Loader2 } from "lucide-react";
@@ -10,9 +11,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation } from "wouter";
 
+const CaregiverContext = createContext<{ isCaregiver: boolean }>({ isCaregiver: false });
+export const useCaregiverMode = () => useContext(CaregiverContext);
+
 export function Layout({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { data: family, isLoading: familyLoading } = useFamily();
+  const { data: cgStatus } = useCaregiverStatus();
+  const isCaregiverMode = cgStatus?.isCaregiver || false;
   const createFamily = useCreateFamily();
   const [familyName, setFamilyName] = useState("");
   const [selectedTheme, setSelectedTheme] = useState({
@@ -52,6 +58,8 @@ export function Layout({ children }: { children: ReactNode }) {
     else if (location === "/goals") bgColor = config.goals || "#eef4f0";
     else if (location === "/wishlists") bgColor = config.wishlists || "#f6f0f4";
     else if (location === "/leave-time") bgColor = config.leaveTime || "#f0f5f2";
+    else if (location === "/care-notes") bgColor = "#eef5f2";
+    else if (location === "/caregiver") bgColor = config.home || "#f0f4f8";
     else if (location === "/settings") bgColor = "#f3f4f6";
 
     return { 
@@ -151,36 +159,41 @@ export function Layout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div 
-      className="min-h-screen w-full transition-colors duration-500 text-foreground flex flex-col"
-      style={getStyle()}
-    >
-      <header className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 bg-white/60 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-sm text-primary font-black text-sm">
-            {family.name?.[0] || "F"}
-          </div>
-          <h1 className="text-sm font-bold text-foreground/80 tracking-tight" data-testid="text-family-name">{family.name}</h1>
-        </div>
-      </header>
-      <main
-        id="main-scroll-area"
-        className="flex-1 overflow-y-auto pb-24 px-4 md:px-6 lg:px-8"
+    <CaregiverContext.Provider value={{ isCaregiver: isCaregiverMode }}>
+      <div 
+        className="min-h-screen w-full transition-colors duration-500 text-foreground flex flex-col"
+        style={getStyle()}
       >
-        <AnimatePresence mode="wait">
-          <motion.div 
-            key={location}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.3 }}
-            className="max-w-6xl mx-auto"
-          >
-            {children}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-      <BottomNav />
-    </div>
+        <header className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-white/60 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-sm text-primary font-black text-sm">
+              {family.name?.[0] || "F"}
+            </div>
+            <h1 className="text-sm font-bold text-foreground/80 tracking-tight" data-testid="text-family-name">
+              {family.name}
+              {isCaregiverMode && <span className="text-[10px] ml-1.5 text-primary/60 uppercase tracking-wider">Caregiver</span>}
+            </h1>
+          </div>
+        </header>
+        <main
+          id="main-scroll-area"
+          className="flex-1 overflow-y-auto pb-24 px-4 md:px-6 lg:px-8"
+        >
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={location}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
+              className="max-w-6xl mx-auto"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+        <BottomNav />
+      </div>
+    </CaregiverContext.Provider>
   );
 }

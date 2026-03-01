@@ -11,9 +11,9 @@ A premium family productivity "operating system" web app.
 ## Project Structure
 ```
 client/src/
-  pages/        - Dashboard, Schedule, Money, Groceries, GroceryListDetail, Chat, Diary, Goals, Wishlists, LeaveTime, Settings
+  pages/        - Dashboard, Schedule, Money, Groceries, GroceryListDetail, Chat, Diary, Goals, Wishlists, LeaveTime, Settings, CaregiverDashboard, CareNotes
   components/   - Layout, BottomNav, UI components (shadcn)
-  hooks/        - use-auth, use-family, use-chat, use-expenses, use-diary, use-goals, use-wishlists, use-leave-time
+  hooks/        - use-auth, use-family, use-chat, use-expenses, use-diary, use-goals, use-wishlists, use-leave-time, use-caregivers
   lib/          - queryClient
 shared/
   schema.ts     - Drizzle schema (all tables)
@@ -57,6 +57,8 @@ server/
 - **blocks** - User blocking system
 - **diary_entries** - Private diary entries (title, body, mood, tags, photoUrls, isPrivate, sharedWith, soft-delete)
 - **diary_settings** - Per-user diary settings (PIN lock, weekly reflection prompt)
+- **caregivers** - Caregiver access records (familyId, userId, invitedBy, status, accessType, expiresAt, assignedChildIds jsonb, permissions jsonb, displayName)
+- **care_notes** - Caregiver activity logs (familyId, caregiverId, childId, type, content, noteTime, createdBy, isLocked)
 
 ## Features
 - **Dashboard**: Overview of events, expenses, savings, Leave Time widget (countdown + interactive checklist)
@@ -68,7 +70,8 @@ server/
 - **Diary**: Protected private reflection space — PIN lock, mood tracking (10 moods), tags, photo attachments, privacy per entry, search/filter, mood insights with distribution charts, soft-delete with 30-day trash, diary settings (PIN, weekly reflection prompt)
 - **Goals**: Comprehensive goal tracking with user-created categories (starter pack available), short-term and long-term goals, 4 progress types (checklist, numeric, streak/consistency, milestones), personal/family visibility, active/completed/archived status, due date tracking with overdue alerts, filtering by type/category, sorting by due date/recently updated, streak tracking with daily check-in and best streak counter
 - **Leave Time**: Intention-setting walk-out time system — recurring weekly schedule (per-day times), same-weekday/everyday quick-set, daily overrides, skip today, pre-departure checklist with quick-add suggestions and reusable templates, reminder timing (5-30 min), private/family visibility, dashboard integration with countdown and interactive checklist, kind non-judgmental tone
-- **Settings**: Theme presets (Pastel, Colorful, Basic, Monochrome, Deep Night), font selection, per-module color customization (includes diary, goals, wishlists, leave time)
+- **Caregiver Mode**: Limited-access mode for babysitters/nannies/grandparents — owner adds caregivers by Replit user ID, assigns children, configures permissions (schedule access level, chat, care notes). Caregivers see simplified dashboard with assigned children, schedule (non-personal events only), care note logging (feeding/diaper/medication/nap/behavioral/mood/general with 24h lock), and parent messaging. Bottom nav shows 4 items for caregivers (Home, Schedule, Notes, Chat). All sensitive routes (money, diary, goals, wishlists, groceries, leave-time) blocked via `blockCaregivers` middleware. Frontend route guards redirect caregivers from protected pages.
+- **Settings**: Theme presets (Soft Cloud, Warm Sand, Ocean Mist, Lavender Dusk, Forest Morning, Monochrome, Deep Night), font selection, per-module color customization, caregiver management (add/revoke/configure permissions)
 
 ## Privacy Architecture
 - Role-based: Owner, Adult, Teen, Youth, Child, Caregiver

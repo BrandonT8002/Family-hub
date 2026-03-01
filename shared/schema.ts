@@ -261,6 +261,38 @@ export const leaveTimeTemplates = pgTable("leave_time_templates", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const caregivers = pgTable("caregivers", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  invitedBy: text("invited_by").references(() => users.id).notNull(),
+  status: text("status").notNull().default("pending"),
+  accessType: text("access_type").notNull().default("ongoing"),
+  expiresAt: timestamp("expires_at"),
+  assignedChildIds: jsonb("assigned_child_ids").default([]),
+  permissions: jsonb("permissions").default({
+    scheduleAccess: "assigned_only",
+    chatEnabled: true,
+    careNotesEnabled: true,
+    mediaUpload: false,
+  }),
+  displayName: text("display_name"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const careNotes = pgTable("care_notes", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  caregiverId: integer("caregiver_id").references(() => caregivers.id).notNull(),
+  childId: integer("child_id").references(() => familyMembers.id),
+  type: text("type").notNull().default("general"),
+  content: text("content").notNull(),
+  noteTime: timestamp("note_time").defaultNow(),
+  createdBy: text("created_by").references(() => users.id).notNull(),
+  isLocked: boolean("is_locked").notNull().default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const blocks = pgTable("blocks", {
   id: serial("id").primaryKey(),
   blockerId: text("blocker_id").references(() => users.id).notNull(),
@@ -345,3 +377,11 @@ export type LeaveTimeSettings = typeof leaveTimeSettings.$inferSelect;
 
 export type LeaveTimeOverride = typeof leaveTimeOverrides.$inferSelect;
 export type LeaveTimeTemplate = typeof leaveTimeTemplates.$inferSelect;
+
+export const insertCaregiverSchema = createInsertSchema(caregivers).omit({ id: true, createdAt: true });
+export type InsertCaregiver = z.infer<typeof insertCaregiverSchema>;
+export type Caregiver = typeof caregivers.$inferSelect;
+
+export const insertCareNoteSchema = createInsertSchema(careNotes).omit({ id: true, createdAt: true, isLocked: true });
+export type InsertCareNote = z.infer<typeof insertCareNoteSchema>;
+export type CareNote = typeof careNotes.$inferSelect;

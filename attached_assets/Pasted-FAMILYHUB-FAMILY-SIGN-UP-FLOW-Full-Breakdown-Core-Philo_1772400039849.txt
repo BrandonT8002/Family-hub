@@ -1,0 +1,307 @@
+FAMILYHUB — FAMILY SIGN-UP FLOW (Full Breakdown)
+
+Core Philosophy
+
+Sign-up should:
+
+• Feel welcoming
+• Feel structured
+• Feel intentional
+• Feel secure
+• Not feel overwhelming
+• Not feel corporate
+
+The owner should fall in love with the app before inviting anyone.
+
+We build emotional buy-in first.
+
+⸻
+
+PHASE 1 — Account Creation (Owner Only)
+
+Step 1: Welcome Screen
+
+Tone:
+
+“Welcome to FamilyHub.”
+“Let’s build your household.”
+
+Two buttons:
+• Get Started
+• Log In
+
+⸻
+
+Step 2: Personal Information
+
+Owner enters:
+
+• First Name
+• Last Name
+• Date of Birth
+• Email
+• Password
+• Confirm Password
+
+Optional:
+• Phone number (for 2FA)
+
+Age verification:
+• Must be 18+ to create a family account
+
+Clear note:
+“You’ll be the owner of this household.”
+
+⸻
+
+Step 3: Security Setup
+
+• Enable biometric login (optional)
+• Enable two-factor authentication (optional but encouraged)
+
+This reinforces trust immediately.
+
+⸻
+
+PHASE 2 — Choose Family Tier
+
+After account creation, owner selects family plan.
+
+No free tier.
+First week trial included.
+
+⸻
+
+Tier Options (Family Version Only)
+
+Family Core
+
+Up to 2 members
+Best for couples or single parent + child
+
+Family Plus
+
+Up to 5 members
+Best for small households
+
+Family Extended
+
+Up to 10 members
+Best for larger families / blended families
+
+Important:
+Even if family has 3 members, they can choose Extended if desired.
+
+We respect choice.
+
+⸻
+
+Tier Screen Messaging
+
+“Choose the structure that fits your household.”
+
+Show:
+
+• Member capacity
+• Caregiver slots
+• Full access to features
+• 7-day trial
+
+Owner selects plan.
+No immediate payment charge until trial ends.
+
+⸻
+
+PHASE 3 — Owner Profile Setup
+
+Now we personalize.
+
+Owner builds:
+
+• Profile photo (optional)
+• Theme preference
+• Dashboard preference
+• Notification style
+• Tone preference (focused / calm / balanced)
+
+We let them see the personality of the app.
+
+⸻
+
+PHASE 4 — Invite Members
+
+After owner profile setup:
+
+Screen says:
+
+“Ready to build your household?”
+
+Options:
+
+• Invite Family Member
+• Skip for now
+
+Owner can invite via:
+
+• Email
+• Username
+• Link
+
+Important:
+
+12 and under:
+• No email required
+• Parent creates username + password for child
+
+13+:
+• Email optional but encouraged
+• At 13, prompt to add email with owner approval
+
+⸻
+
+PHASE 5 — Permission Setup (Light Version)
+
+For each member added:
+
+Owner chooses:
+
+• Can create shared events?
+• Can delete items?
+• Can view finances?
+• Can share media?
+• Can message outside family?
+• Can create private goals?
+
+Not overwhelming.
+Just essential toggles.
+
+Advanced permissions can be adjusted later in Settings.
+
+⸻
+
+PHASE 6 — Home Dashboard Setup
+
+Before landing on main screen:
+
+We ask:
+
+“What would you like to see first when you open the app?”
+
+Options:
+
+• Today’s Schedule
+• Personal Dashboard (news, sports, quotes)
+• Goals
+• Money Overview
+• Family Chat
+
+User selects primary landing tab.
+
+Can change anytime.
+
+⸻
+
+PHASE 7 — Quick Guided Tutorial (Short & Smooth)
+
+5–6 screens max.
+
+Not overwhelming.
+
+⸻
+
+Slide 1 — Schedule
+
+“Organize personal and shared events.”
+
+Slide 2 — Goals
+
+“Track what matters most.”
+
+Slide 3 — Money
+
+“Understand where your money goes.”
+
+Slide 4 — Shopping
+
+“Stay organized in every store.”
+
+Slide 5 — Privacy
+
+“Private by default. Shared by choice.”
+
+Slide 6 — You’re Ready
+
+“Let’s build something strong.”
+
+Button:
+Enter FamilyHub
+
+⸻
+
+After Tutorial — Landing Screen
+
+Owner lands on:
+
+Their personalized dashboard.
+
+Top section:
+Encouraging message.
+
+Example:
+“Let’s set the tone for today.”
+
+If no schedule yet:
+Prompt:
+“Add your first event.”
+
+If no goals yet:
+Prompt:
+“Start your first goal.”
+
+Gentle direction.
+No pressure.
+
+⸻
+
+Important Structural Rules
+
+• Owner must fall in love before inviting others
+• Invitations optional — can build alone first
+• Personalization happens before social
+• Permissions structured but not overwhelming
+• 12 and under simplified onboarding
+• 13 prompts email upgrade
+• 15–17 gradually increased autonomy
+
+⸻
+
+Emotional Intent of Sign-Up
+
+The user should feel:
+
+• In control
+• Respected
+• Organized
+• Calm
+• Inspired
+
+Not:
+
+• Tracked
+• Watched
+• Overwhelmed
+• Rushed
+
+⸻
+
+Final Flow Summary
+	1.	Welcome
+	2.	Personal info
+	3.	Security setup
+	4.	Choose family tier
+	5.	Owner personalization
+	6.	Invite members
+	7.	Permission light setup
+	8.	Choose dashboard style
+	9.	Quick tutorial
+	10.	Enter app

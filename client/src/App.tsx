@@ -5,8 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 
-// App Components
-import { Layout } from "@/components/layout";
+import { Layout, useCaregiverMode } from "@/components/layout";
 import Dashboard from "@/pages/dashboard";
 import Schedule from "@/pages/schedule";
 import Money from "@/pages/money";
@@ -18,22 +17,37 @@ import Goals from "@/pages/goals";
 import Wishlists from "@/pages/wishlists";
 import LeaveTime from "@/pages/leave-time";
 import Settings from "@/pages/settings";
+import CaregiverDashboard from "@/pages/caregiver-dashboard";
+import CareNotesPage from "@/pages/care-notes";
+
+function HomeSwitcher() {
+  const { isCaregiver } = useCaregiverMode();
+  return isCaregiver ? <CaregiverDashboard /> : <Dashboard />;
+}
+
+function ProtectedRoute({ component: Component }: { component: () => JSX.Element }) {
+  const { isCaregiver } = useCaregiverMode();
+  if (isCaregiver) return <CaregiverDashboard />;
+  return <Component />;
+}
 
 function Router() {
   return (
     <Layout>
       <Switch>
-        <Route path="/" component={Dashboard}/>
+        <Route path="/" component={HomeSwitcher}/>
         <Route path="/schedule" component={Schedule}/>
-        <Route path="/money" component={Money}/>
-        <Route path="/groceries" component={Groceries}/>
+        <Route path="/money">{() => <ProtectedRoute component={Money} />}</Route>
+        <Route path="/groceries">{() => <ProtectedRoute component={Groceries} />}</Route>
         <Route path="/groceries/:listId" component={GroceryListDetail}/>
         <Route path="/chat" component={Chat}/>
-        <Route path="/diary" component={Diary}/>
-        <Route path="/goals" component={Goals}/>
-        <Route path="/wishlists" component={Wishlists}/>
-        <Route path="/leave-time" component={LeaveTime}/>
-        <Route path="/settings" component={Settings}/>
+        <Route path="/diary">{() => <ProtectedRoute component={Diary} />}</Route>
+        <Route path="/goals">{() => <ProtectedRoute component={Goals} />}</Route>
+        <Route path="/wishlists">{() => <ProtectedRoute component={Wishlists} />}</Route>
+        <Route path="/leave-time">{() => <ProtectedRoute component={LeaveTime} />}</Route>
+        <Route path="/settings">{() => <ProtectedRoute component={Settings} />}</Route>
+        <Route path="/caregiver" component={CaregiverDashboard}/>
+        <Route path="/care-notes" component={CareNotesPage}/>
         <Route component={NotFound} />
       </Switch>
     </Layout>

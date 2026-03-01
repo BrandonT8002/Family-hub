@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { api, buildUrl } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import { authStorage } from "./replit_integrations/auth/storage";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -55,8 +56,31 @@ export async function registerRoutes(
     const userId = req.user?.claims?.sub;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const family = await storage.getFamilyForUser(userId);
-    if (!family) return res.status(400).json({ message: "No family found" });
-    req.family = family;
+    if (family) {
+      req.family = family;
+      req.isCaregiver = false;
+      return next();
+    }
+    const cgFamily = await storage.getFamilyForCaregiver(userId);
+    if (cgFamily) {
+      req.family = cgFamily;
+      req.isCaregiver = true;
+      const cg = await storage.getCaregiverByUserId(cgFamily.id, userId);
+      req.caregiverRecord = cg;
+      return next();
+    }
+    return res.status(400).json({ message: "No family found" });
+  };
+
+  const requireOwner = async (req: any, res: any, next: any) => {
+    const userId = req.user?.claims?.sub;
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (req.family.ownerId !== userId) return res.status(403).json({ message: "Only the family owner can do this" });
+    next();
+  };
+
+  const blockCaregivers = (req: any, res: any, next: any) => {
+    if (req.isCaregiver) return res.status(403).json({ message: "Caregivers do not have access to this feature" });
     next();
   };
 
@@ -87,10 +111,12 @@ export async function registerRoutes(
 
   app.get(api.family.get.path, isAuthenticated, async (req: any, res) => {
     const userId = req.user.claims.sub;
-    const family = await storage.getFamilyForUser(userId);
+    let family = await storage.getFamilyForUser(userId);
     if (family) {
       await seedMoneyData(family.id, userId);
+      return res.json(family);
     }
+    family = await storage.getFamilyForCaregiver(userId);
     res.json(family);
   });
 
@@ -151,12 +177,12 @@ export async function registerRoutes(
   });
 
   // Expenses
-  app.get(api.expenses.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get(api.expenses.list.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const expenses = await storage.getExpenses(req.family.id);
     res.json(expenses);
   });
 
-  app.post(api.expenses.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post(api.expenses.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.expenses.create.input.parse(req.body);
       const expense = await storage.createExpense({
@@ -176,12 +202,12 @@ export async function registerRoutes(
   });
 
   // Financial Schedule
-  app.get(api.financialSchedule.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get(api.financialSchedule.list.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const schedule = await storage.getFinancialSchedule(req.family.id);
     res.json(schedule);
   });
 
-  app.post(api.financialSchedule.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post(api.financialSchedule.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.financialSchedule.create.input.parse(req.body);
       const parsedDate = new Date(input.dueDate);
@@ -219,7 +245,7 @@ export async function registerRoutes(
     reminderDays: z.number().optional(),
   });
 
-  app.patch('/api/financial-schedule/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/financial-schedule/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const id = Number(req.params.id);
       const input = updateFinancialScheduleSchema.parse(req.body);
@@ -251,7 +277,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/financial-schedule/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/financial-schedule/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const id = Number(req.params.id);
       await storage.deleteFinancialSchedule(id, req.family.id);
@@ -262,12 +288,12 @@ export async function registerRoutes(
   });
 
   // Savings Goals
-  app.get(api.savingsGoals.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get(api.savingsGoals.list.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const goals = await storage.getSavingsGoals(req.family.id);
     res.json(goals);
   });
 
-  app.post(api.savingsGoals.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post(api.savingsGoals.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.savingsGoals.create.input.parse(req.body);
       const goal = await storage.createSavingsGoal({
@@ -285,7 +311,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch(api.savingsGoals.update.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch(api.savingsGoals.update.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.savingsGoals.update.input.parse(req.body);
       const goal = await storage.updateSavingsGoal(Number(req.params.id), input.currentAmount.toString());
@@ -299,13 +325,13 @@ export async function registerRoutes(
   });
 
   // Groceries
-  app.get(api.groceryLists.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get(api.groceryLists.list.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const lists = await storage.getGroceryLists(req.family.id, userId);
     res.json(lists);
   });
 
-  app.post(api.groceryLists.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post(api.groceryLists.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.groceryLists.create.input.parse(req.body);
       const userId = req.user.claims.sub;
@@ -327,7 +353,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/grocery-lists/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/grocery-lists/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const id = Number(req.params.id);
       const userId = req.user.claims.sub;
@@ -344,7 +370,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get(api.groceryItems.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get(api.groceryItems.list.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const listId = Number(req.params.listId);
     const userId = req.user.claims.sub;
     const list = await storage.getGroceryList(listId);
@@ -355,7 +381,7 @@ export async function registerRoutes(
     res.json(items);
   });
 
-  app.post(api.groceryItems.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post(api.groceryItems.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.groceryItems.create.input.parse(req.body);
       const item = await storage.createGroceryItem({
@@ -374,7 +400,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch(api.groceryItems.toggle.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch(api.groceryItems.toggle.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.groceryItems.toggle.input.parse(req.body);
       const item = await storage.toggleGroceryItem(Number(req.params.id), input.isChecked);
@@ -387,7 +413,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch(api.groceryItems.update.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch(api.groceryItems.update.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.groceryItems.update.input.parse(req.body);
       const updateData: any = {};
@@ -405,7 +431,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete(api.groceryItems.remove.path, isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete(api.groceryItems.remove.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       await storage.deleteGroceryItem(Number(req.params.id));
       res.json({ success: true });
@@ -591,31 +617,31 @@ export async function registerRoutes(
   });
 
   // Diary
-  app.get('/api/diary', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/diary', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const entries = await storage.getDiaryEntries(userId, req.family.id);
     res.json(entries);
   });
 
-  app.get('/api/diary/deleted', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/diary/deleted', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const entries = await storage.getDeletedDiaryEntries(userId, req.family.id);
     res.json(entries);
   });
 
-  app.get('/api/diary/mood-stats', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/diary/mood-stats', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const stats = await storage.getMoodStats(userId, req.family.id);
     res.json(stats);
   });
 
-  app.get('/api/diary/settings', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/diary/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const settings = await storage.getDiarySettings(userId, req.family.id);
     res.json(settings);
   });
 
-  app.patch('/api/diary/settings', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/diary/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const input = z.object({
@@ -631,7 +657,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/diary/verify-pin', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/diary/verify-pin', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { pin } = z.object({ pin: z.string() }).parse(req.body);
@@ -643,7 +669,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/diary/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/diary/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const userId = req.user.claims.sub;
     const entry = await storage.getDiaryEntry(Number(req.params.id));
     if (!entry) return res.status(404).json({ message: "Entry not found" });
@@ -655,7 +681,7 @@ export async function registerRoutes(
     res.json(entry);
   });
 
-  app.post('/api/diary', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/diary', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const input = z.object({
@@ -681,7 +707,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/diary/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/diary/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const entry = await storage.getDiaryEntry(Number(req.params.id));
@@ -704,7 +730,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/diary/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/diary/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const entry = await storage.getDiaryEntry(Number(req.params.id));
@@ -717,7 +743,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/diary/:id/restore', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/diary/:id/restore', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const entry = await storage.getDiaryEntry(Number(req.params.id));
@@ -732,7 +758,7 @@ export async function registerRoutes(
 
   // ── Goals ──
 
-  app.get('/api/goals/categories', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/goals/categories', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const categories = await storage.getGoalCategories(req.family.id);
       res.json(categories);
@@ -741,7 +767,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/goals/categories', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/goals/categories', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const { name, icon, color } = req.body;
       if (!name) return res.status(400).json({ message: "Name is required" });
@@ -753,7 +779,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/goals/categories/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/goals/categories/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       await storage.deleteGoalCategory(Number(req.params.id), req.family.id);
       res.json({ success: true });
@@ -762,7 +788,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/goals', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/goals', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const allGoals = await storage.getGoals(req.family.id);
       const userId = req.user.claims.sub;
@@ -777,7 +803,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/goals', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/goals', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { title, description, categoryId, type, progressType, visibility, targetValue, unit, dueDate, linkedSavingsGoalId } = req.body;
@@ -804,7 +830,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/goals/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/goals/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const goal = await storage.getGoal(Number(req.params.id));
@@ -818,7 +844,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/goals/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/goals/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const goal = await storage.getGoal(Number(req.params.id));
@@ -831,7 +857,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/goals/:id/items', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/goals/:id/items', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const goal = await storage.getGoal(Number(req.params.id));
       if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
@@ -844,7 +870,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/goals/:id/items', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/goals/:id/items', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const goal = await storage.getGoal(Number(req.params.id));
       if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
@@ -859,7 +885,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/goals/items/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/goals/items/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const item = await storage.getGoalItemWithGoal(Number(req.params.id));
       if (!item || item.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
@@ -873,7 +899,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/goals/items/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/goals/items/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const item = await storage.getGoalItemWithGoal(Number(req.params.id));
       if (!item || item.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
@@ -888,7 +914,7 @@ export async function registerRoutes(
 
   // ── Wishlists ──
 
-  app.get('/api/wishlists', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/wishlists', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const all = await storage.getWishlists(req.family.id);
@@ -903,7 +929,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/wishlists', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/wishlists', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { name, description, visibility, hideClaimedBy } = req.body;
@@ -922,7 +948,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/wishlists/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/wishlists/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const wl = await storage.getWishlist(Number(req.params.id));
@@ -935,7 +961,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/wishlists/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/wishlists/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const wl = await storage.getWishlist(Number(req.params.id));
@@ -948,7 +974,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/wishlists/:id/items', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/wishlists/:id/items', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const wl = await storage.getWishlist(Number(req.params.id));
@@ -967,7 +993,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/wishlists/:id/items', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/wishlists/:id/items', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const wl = await storage.getWishlist(Number(req.params.id));
@@ -992,7 +1018,7 @@ export async function registerRoutes(
     }
   });
 
-  app.patch('/api/wishlists/items/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.patch('/api/wishlists/items/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const itemInfo = await storage.getWishlistItemWithWishlist(Number(req.params.id));
@@ -1037,7 +1063,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/wishlists/items/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/wishlists/items/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const itemInfo = await storage.getWishlistItemWithWishlist(Number(req.params.id));
@@ -1052,7 +1078,7 @@ export async function registerRoutes(
 
   // ── Leave Time ──
 
-  app.get('/api/leave-time/settings', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/leave-time/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
@@ -1062,7 +1088,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put('/api/leave-time/settings', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.put('/api/leave-time/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { isEnabled, schedule, reminderMinutes, visibility, showOnDashboard, checklistEnabled, defaultChecklist } = req.body;
@@ -1081,7 +1107,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/leave-time/today', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/leave-time/today', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
@@ -1115,7 +1141,7 @@ export async function registerRoutes(
     }
   });
 
-  app.put('/api/leave-time/override', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.put('/api/leave-time/override', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
@@ -1135,7 +1161,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/leave-time/override/:date', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/leave-time/override/:date', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
@@ -1147,7 +1173,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/leave-time/templates', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/leave-time/templates', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const templates = await storage.getLeaveTimeTemplates(req.family.id, userId);
@@ -1157,7 +1183,7 @@ export async function registerRoutes(
     }
   });
 
-  app.post('/api/leave-time/templates', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.post('/api/leave-time/templates', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { name, items } = req.body;
@@ -1169,7 +1195,7 @@ export async function registerRoutes(
     }
   });
 
-  app.delete('/api/leave-time/templates/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.delete('/api/leave-time/templates/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       await storage.deleteLeaveTimeTemplate(Number(req.params.id), req.family.id, userId);
@@ -1179,7 +1205,7 @@ export async function registerRoutes(
     }
   });
 
-  app.get('/api/leave-time/family', isAuthenticated, requireFamily, async (req: any, res) => {
+  app.get('/api/leave-time/family', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const allSettings = await storage.getLeaveTimeSettingsForFamily(req.family.id);
       const visible = allSettings.filter((s: any) => s.visibility === "family");
@@ -1198,6 +1224,166 @@ export async function registerRoutes(
       res.json(result.filter(Boolean));
     } catch (err) {
       res.status(500).json({ message: "Failed to fetch family leave times" });
+    }
+  });
+
+  // ============ CAREGIVER ROUTES ============
+
+  app.get('/api/caregivers', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const list = await storage.getCaregivers(req.family.id);
+      res.json(list);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch caregivers" });
+    }
+  });
+
+  app.post('/api/caregivers', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { caregiverUserId, displayName, accessType, expiresAt, assignedChildIds, permissions } = req.body;
+      if (!caregiverUserId) return res.status(400).json({ message: "Caregiver user ID is required" });
+
+      const existing = await storage.getCaregiverByUserId(req.family.id, caregiverUserId);
+      if (existing) return res.status(400).json({ message: "This user is already a caregiver for your family" });
+
+      const existingUser = await authStorage.getUser(caregiverUserId);
+      if (!existingUser) {
+        await authStorage.upsertUser({
+          id: caregiverUserId,
+          email: `${caregiverUserId}@caregiver.pending`,
+          firstName: displayName || "Caregiver",
+          lastName: "",
+          profileImageUrl: null,
+        });
+      }
+
+      const cg = await storage.addCaregiver({
+        familyId: req.family.id,
+        userId: caregiverUserId,
+        invitedBy: userId,
+        status: "active",
+        accessType: accessType || "ongoing",
+        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        assignedChildIds: assignedChildIds || [],
+        permissions: permissions || { scheduleAccess: "assigned_only", chatEnabled: true, careNotesEnabled: true, mediaUpload: false },
+        displayName: displayName || null,
+      });
+      res.json(cg);
+    } catch (err: any) {
+      console.error("Failed to add caregiver:", err.message);
+      res.status(500).json({ message: "Failed to add caregiver" });
+    }
+  });
+
+  app.patch('/api/caregivers/:id', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      const { assignedChildIds, permissions, accessType, expiresAt, displayName } = req.body;
+      const updateData: any = {};
+      if (assignedChildIds !== undefined) updateData.assignedChildIds = assignedChildIds;
+      if (permissions !== undefined) updateData.permissions = permissions;
+      if (accessType !== undefined) updateData.accessType = accessType;
+      if (expiresAt !== undefined) updateData.expiresAt = expiresAt ? new Date(expiresAt) : null;
+      if (displayName !== undefined) updateData.displayName = displayName;
+
+      const cg = await storage.updateCaregiver(Number(req.params.id), req.family.id, updateData);
+      res.json(cg);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update caregiver" });
+    }
+  });
+
+  app.delete('/api/caregivers/:id', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
+    try {
+      await storage.revokeCaregiver(Number(req.params.id), req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to revoke caregiver" });
+    }
+  });
+
+  app.get('/api/caregiver/status', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (!req.isCaregiver) return res.json({ isCaregiver: false });
+      const cg = await storage.getCaregiverByUserId(req.family.id, userId);
+      if (!cg) return res.json({ isCaregiver: false });
+      const members = await storage.getFamilyMembers(req.family.id);
+      const assignedChildren = members.filter((m: any) => ((cg.assignedChildIds as number[]) || []).includes(m.id));
+      res.json({ isCaregiver: true, caregiver: cg, assignedChildren, familyName: req.family.name });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch caregiver status" });
+    }
+  });
+
+  app.get('/api/caregiver/schedule', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      if (!req.isCaregiver || !req.caregiverRecord) return res.status(403).json({ message: "Not a caregiver" });
+      const perms = (req.caregiverRecord.permissions as any) || {};
+      const allEvents = await storage.getEvents(req.family.id);
+
+      let filtered = allEvents;
+      if (perms.scheduleAccess === "shared_events") {
+        filtered = allEvents.filter((e: any) => !e.isPersonal);
+      } else if (perms.scheduleAccess === "child_schedule" || perms.scheduleAccess === "assigned_only") {
+        filtered = allEvents.filter((e: any) => !e.isPersonal);
+      }
+      res.json(filtered);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch caregiver schedule" });
+    }
+  });
+
+  app.get('/api/caregiver/care-notes', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      if (!req.isCaregiver || !req.caregiverRecord) return res.status(403).json({ message: "Not a caregiver" });
+      const notes = await storage.getCareNotesForCaregiver(req.caregiverRecord.id);
+      res.json(notes);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch care notes" });
+    }
+  });
+
+  app.post('/api/caregiver/care-notes', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      if (!req.isCaregiver || !req.caregiverRecord) return res.status(403).json({ message: "Not a caregiver" });
+      const perms = (req.caregiverRecord.permissions as any) || {};
+      if (!perms.careNotesEnabled) return res.status(403).json({ message: "Care notes not enabled" });
+
+      const userId = req.user.claims.sub;
+      const { childId, type, content } = req.body;
+      if (!content) return res.status(400).json({ message: "Content is required" });
+
+      if (childId) {
+        const assignedIds = (req.caregiverRecord.assignedChildIds as number[]) || [];
+        if (assignedIds.length > 0 && !assignedIds.includes(childId)) {
+          return res.status(403).json({ message: "Not assigned to this child" });
+        }
+      }
+
+      const note = await storage.createCareNote({
+        familyId: req.family.id,
+        caregiverId: req.caregiverRecord.id,
+        childId: childId || null,
+        type: type || "general",
+        content,
+        createdBy: userId,
+        noteTime: new Date(),
+      });
+      res.json(note);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create care note" });
+    }
+  });
+
+  app.get('/api/care-notes', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      if (req.isCaregiver) return res.status(403).json({ message: "Use /api/caregiver/care-notes" });
+      const childId = req.query.childId ? Number(req.query.childId) : undefined;
+      const notes = await storage.getCareNotes(req.family.id, childId);
+      res.json(notes);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch care notes" });
     }
   });
 
