@@ -37,7 +37,8 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
 
   const isOwner = user?.id === wishlist.creatorId;
 
-  const [addOpen, setAddOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<WishlistItem | null>(null);
   const [form, setForm] = useState({
     name: "", category: "", estimatedPrice: "", storeName: "",
     storeLink: "", notes: "", priority: "medium", wantOrNeed: "want"
@@ -48,12 +49,33 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
     storeLink: "", notes: "", priority: "medium", wantOrNeed: "want"
   });
 
-  const handleAddItem = () => {
+  const openAdd = () => {
+    setEditingItem(null);
+    resetForm();
+    setDialogOpen(true);
+  };
+
+  const openEdit = (item: WishlistItem) => {
+    setEditingItem(item);
+    setForm({
+      name: item.name,
+      category: item.category || "",
+      estimatedPrice: item.estimatedPrice ? String(parseFloat(item.estimatedPrice)) : "",
+      storeName: item.storeName || "",
+      storeLink: item.storeLink || "",
+      notes: item.notes || "",
+      priority: item.priority || "medium",
+      wantOrNeed: item.wantOrNeed || "want",
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSaveItem = () => {
     if (!form.name.trim()) {
       toast({ title: "Please enter an item name", variant: "destructive" });
       return;
     }
-    createItem.mutate({
+    const payload = {
       wishlistId: wishlist.id,
       name: form.name.trim(),
       category: form.category || null,
@@ -63,10 +85,19 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
       notes: form.notes || null,
       priority: form.priority,
       wantOrNeed: form.wantOrNeed,
-    }, {
-      onSuccess: () => { setAddOpen(false); resetForm(); toast({ title: "Item added" }); },
-      onError: () => toast({ title: "Failed to add item", variant: "destructive" }),
-    });
+    };
+
+    if (editingItem) {
+      updateItem.mutate({ id: editingItem.id, ...payload }, {
+        onSuccess: () => { setDialogOpen(false); setEditingItem(null); resetForm(); toast({ title: "Item updated" }); },
+        onError: () => toast({ title: "Failed to update item", variant: "destructive" }),
+      });
+    } else {
+      createItem.mutate(payload, {
+        onSuccess: () => { setDialogOpen(false); resetForm(); toast({ title: "Item added" }); },
+        onError: () => toast({ title: "Failed to add item", variant: "destructive" }),
+      });
+    }
   };
 
   const handleClaim = (item: WishlistItem) => {
@@ -123,7 +154,7 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
       </div>
 
       {isOwner && (
-        <Button onClick={() => { resetForm(); setAddOpen(true); }} className="rounded-2xl" data-testid="button-add-wishlist-item">
+        <Button onClick={openAdd} className="rounded-2xl" data-testid="button-add-wishlist-item">
           <Plus className="w-4 h-4 mr-2" /> Add Item
         </Button>
       )}
@@ -141,7 +172,12 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
       ) : (
         <div className="space-y-3">
           {items.map(item => (
-            <Card key={item.id} className="bg-white/80 backdrop-blur-sm border-0 shadow-sm" data-testid={`wishlist-item-${item.id}`}>
+            <Card
+              key={item.id}
+              className={`bg-white/80 backdrop-blur-sm border-0 shadow-sm ${isOwner ? "cursor-pointer hover:shadow-md transition-shadow" : ""}`}
+              onClick={() => isOwner && openEdit(item)}
+              data-testid={`wishlist-item-${item.id}`}
+            >
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
                   <div className="flex-1 min-w-0">
@@ -173,7 +209,7 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
                         <span className="flex items-center gap-1"><ShoppingBag className="w-3 h-3" />{item.storeName}</span>
                       )}
                       {item.storeLink && (
-                        <a href={item.storeLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline" data-testid={`link-store-${item.id}`}>
+                        <a href={item.storeLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-blue-500 hover:underline" onClick={e => e.stopPropagation()} data-testid={`link-store-${item.id}`}>
                           <ExternalLink className="w-3 h-3" />Link
                         </a>
                       )}
@@ -182,7 +218,7 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
                       <p className="text-xs text-muted-foreground mt-1 italic">{item.notes}</p>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                     {!isOwner && item.status !== "purchased" && (
                       <Button
                         size="sm"
@@ -213,6 +249,10 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEdit(item)} data-testid={`edit-item-${item.id}`}>
+                            <Edit className="w-4 h-4 mr-2" />Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={() => deleteItem.mutate({ id: item.id, wishlistId: wishlist.id }, {
                             onSuccess: () => toast({ title: "Item removed" }),
                           })} className="text-red-600" data-testid={`delete-item-${item.id}`}>
@@ -229,11 +269,11 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
         </div>
       )}
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingItem(null); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add Wishlist Item</DialogTitle>
-            <DialogDescription>What would you love to have?</DialogDescription>
+            <DialogTitle>{editingItem ? "Edit Item" : "Add Wishlist Item"}</DialogTitle>
+            <DialogDescription>{editingItem ? "Update the details for this item." : "What would you love to have?"}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div>
@@ -298,10 +338,10 @@ function WishlistDetailView({ wishlist, onBack }: { wishlist: Wishlist; onBack: 
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)} data-testid="button-cancel-wishitem">Cancel</Button>
-            <Button onClick={handleAddItem} disabled={createItem.isPending} data-testid="button-save-wishitem">
-              {createItem.isPending && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
-              Add Item
+            <Button variant="outline" onClick={() => { setDialogOpen(false); setEditingItem(null); }} data-testid="button-cancel-wishitem">Cancel</Button>
+            <Button onClick={handleSaveItem} disabled={editingItem ? updateItem.isPending : createItem.isPending} data-testid="button-save-wishitem">
+              {(editingItem ? updateItem.isPending : createItem.isPending) && <Loader2 className="w-4 h-4 animate-spin mr-1" />}
+              {editingItem ? "Save Changes" : "Add Item"}
             </Button>
           </DialogFooter>
         </DialogContent>
