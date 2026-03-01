@@ -1,0 +1,376 @@
+This includes:
+	•	Internal family privacy
+	•	Age-based permissions
+	•	Owner limitations
+	•	Blocking system
+	•	Diary protection
+	•	Financial visibility rules
+	•	Outside family communication
+	•	Caregiver limitations
+	•	Abuse reporting
+	•	Chat system (group + individual)
+	•	Message acceptance flow
+	•	Account removal logic
+	•	Data retention policy
+
+This is the full privacy architecture.
+
+⸻
+
+FAMILYHUB — COMPLETE PRIVACY FRAMEWORK (Updated)
+
+⸻
+
+1. Core Privacy Philosophy
+
+FamilyHub is not a surveillance tool.
+
+Privacy is:
+	•	Layered
+	•	Permission-based
+	•	Transparent
+	•	Respectful of adulthood
+	•	Respectful of adolescence
+	•	Protective of children
+
+The app does not assume authority.
+It assigns it intentionally.
+
+⸻
+
+2. Role-Based Privacy Structure
+
+Owner (Primary Account Holder)
+
+Owner can:
+	•	Add/remove members
+	•	Assign roles
+	•	Control visibility permissions for minors
+	•	Set financial visibility rules
+	•	Assign caregiver access
+	•	Control media sharing settings for minors
+
+Owner cannot:
+	•	Read private adult chats
+	•	View adult personal schedules
+	•	View adult diary entries
+	•	See who adults are chatting with
+	•	Automatically access teen diary
+	•	Access financial logs of other adults
+
+Owner authority is structural, not invasive.
+
+⸻
+
+Adults (18+)
+
+Adults have:
+	•	Private schedules
+	•	Private chats
+	•	Private diary
+	•	Private finances
+	•	Independent media sharing control
+
+Adults can leave the family and retain their data.
+
+⸻
+
+Teens (15–17)
+
+Teens have:
+	•	Private schedule
+	•	Private chat (with message request system)
+	•	Private diary
+	•	Optional academic sharing
+	•	Limited financial visibility (if owner allows)
+
+Owner cannot access teen diary without:
+	•	Teen approval
+	•	Explicit consent per entry
+
+Teens are transitioning into adulthood.
+
+⸻
+
+Youth (13–14)
+
+13–14 can:
+	•	Add personal schedule events
+	•	Use chat with message acceptance
+	•	Create diary
+	•	Attach email (with owner approval)
+
+Owner sets visibility controls.
+
+⸻
+
+Children (12 and Under)
+	•	No email required
+	•	Username/password only
+	•	Controlled by owner
+	•	Limited chat access
+	•	No independent financial visibility
+	•	Cannot share media outside app unless permitted
+
+If deleted:
+	•	Data retained 1 year (if payment active)
+	•	Re-add possible during retention window
+
+⸻
+
+3. Diary Privacy System
+
+Diary is the most protected space in the app.
+
+Features:
+	•	Biometric lock (Face ID / Touch ID)
+	•	Optional PIN
+	•	Two-step access protection
+	•	Entry-by-entry visibility selection
+	•	Owner cannot bulk access diary
+
+If a user allows diary access:
+	•	They select specific entries
+	•	Consent reminder appears before writing
+	•	Access can be revoked anytime
+
+Adults:
+	•	No diary access override allowed
+
+Teens:
+	•	Owner can request access
+	•	Teen must approve
+
+No silent viewing allowed.
+
+⸻
+
+4. Financial Privacy
+
+Financial data is private by default.
+
+Owner can choose:
+	•	Who sees family financial overview
+	•	Whether teens see spending
+	•	Whether children see spending
+
+Adults:
+	•	Maintain private personal financial logs
+
+No cross-adult financial spying.
+
+⸻
+
+5. Schedule Privacy
+
+Events can be:
+	•	Personal (private)
+	•	Shared with family
+
+Personal events:
+	•	Not visible to others
+	•	Not shown in family view
+	•	Not monitored by owner
+
+Shared events:
+	•	Visible to selected family members
+
+Financial schedule items:
+	•	Remain inside Money tab
+	•	Not automatically placed on family calendar
+
+⸻
+
+6. Chat System — Complete Design
+
+⸻
+
+A. Family Group Chat
+	•	All family members included
+	•	Owner cannot read deleted messages once removed
+	•	Message history retained within family only
+	•	No outside visibility
+	•	Media sharing controlled for minors
+
+⸻
+
+B. Individual Chat (Internal Family)
+	•	One-on-one chats allowed
+	•	Owner cannot see chat contents
+	•	Owner cannot see who is chatting with who
+	•	Message deletion is local
+	•	Blocking available
+
+⸻
+
+C. Outside Family Communication
+
+Families can connect with other families.
+
+Connection rules:
+	•	Both owners must approve
+	•	No cross-family data visibility
+	•	No schedule access
+	•	No financial access
+	•	No diary access
+
+Only chat + optional gift list coordination allowed.
+
+⸻
+
+D. Message Request System
+
+If no chat history exists:
+	•	First message is a request
+	•	Recipient must accept before seeing message
+	•	If chat deleted, request system resets
+	•	Users can disable auto-accept
+
+Prevents harassment.
+
+⸻
+
+E. Blocking System
+	•	24-hour cooldown before unblocking
+	•	Extra confirmation prompt before blocking
+	•	Block prevents:
+	•	Messages
+	•	Media sharing
+	•	Does not auto-delete schedule data
+
+⸻
+
+F. Abuse Reporting
+
+Users can:
+	•	Report message
+	•	Report user
+	•	Report safety concern
+
+Reports go to:
+	•	Owner (if internal)
+	•	System moderation (if cross-family)
+
+Clear reporting channel built in.
+
+⸻
+
+7. Media Sharing Controls
+
+Owner controls for minors:
+	•	Allow sharing outside app
+	•	Restrict screenshots (future phase)
+	•	Control external family sharing
+
+Adults:
+	•	Full media control
+
+Financial screenshots:
+	•	Restricted by default
+
+⸻
+
+8. Caregiver Privacy Model
+
+Caregiver can:
+	•	View assigned schedule items
+	•	Communicate with approved members
+
+Caregiver cannot:
+	•	View diary
+	•	View finances
+	•	Access full family chat
+	•	Add members
+	•	Modify permissions
+
+Caregiver limit enforced.
+
+⸻
+
+9. Account Removal & Ghosting
+
+Owner Ghosting
+
+If owner disappears:
+	•	Grace period allowed
+	•	Temporary admin can be assigned
+	•	Account becomes read-only after payment lapse
+	•	Data retained 1 year after cancellation
+
+Member Removal
+
+If member removed:
+	•	Removed completely from workspace
+	•	Owner has 24-hour file transfer window
+	•	After 24 hours:
+	•	Account wiped from workspace
+	•	Removed member can create new account
+	•	No residual access allowed
+
+Capacity rule:
+	•	If workspace at max
+	•	Removed member must fully clear before new one added
+
+⸻
+
+10. Age Misrepresentation Protection
+
+Terms include:
+	•	Platform not responsible if age misrepresented
+	•	Users responsible for correct age entry
+	•	Guardian must verify minor accounts
+
+⸻
+
+11. Data Retention Policy
+
+After cancellation:
+	•	Data stored 1 year
+	•	Reactivation possible within 1 year
+	•	After 1 year: permanent deletion
+
+Deleted minor accounts:
+	•	Retained 1 year if subscription active
+
+⸻
+
+12. App Fatigue Prevention
+
+The app does NOT:
+	•	Send addictive notifications
+	•	Push daily engagement spam
+	•	Use manipulative retention tactics
+
+It only sends:
+	•	Schedule alerts
+	•	Workout reminders (optional)
+	•	Financial reminders (optional)
+	•	Memory alerts (optional)
+
+Users choose engagement style.
+
+⸻
+
+13. Transparency Principle
+
+Privacy is:
+	•	Built into architecture
+	•	Not aggressively marketed
+	•	Not repeatedly announced
+
+The app shows privacy through behavior.
+
+⸻
+
+Final Summary
+
+FamilyHub privacy system ensures:
+	•	Adults remain autonomous
+	•	Teens transition responsibly
+	•	Children are protected
+	•	Owners manage structure, not content
+	•	No internal spying
+	•	No external exposure
+	•	No forced transparency
+
+It is structured privacy — not chaos.
