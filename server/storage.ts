@@ -2,10 +2,10 @@ import { db } from "./db";
 import {
   families, familyMembers, events, expenses, groceryLists, groceryItems, chatMessages, users,
   financialSchedule, savingsGoals, conversations, conversationParticipants, blocks,
-  diaryEntries, diarySettings,
+  diaryEntries, diarySettings, goals, goalItems, goalCategories,
   type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage, type InsertDiaryEntry
 } from "@shared/schema";
-import { eq, desc, and, or, ne, inArray, isNull } from "drizzle-orm";
+import { eq, desc, and, or, ne, inArray, isNull, asc } from "drizzle-orm";
 
 export interface IStorage {
   getFamilyForUser(userId: string): Promise<typeof families.$inferSelect | null>;
@@ -53,6 +53,22 @@ export interface IStorage {
   unblockUser(blockerId: string, blockedId: string, familyId: number): Promise<void>;
   getBlocks(userId: string, familyId: number): Promise<(typeof blocks.$inferSelect)[]>;
   isBlocked(userId1: string, userId2: string, familyId: number): Promise<boolean>;
+
+  getGoalCategories(familyId: number): Promise<(typeof goalCategories.$inferSelect)[]>;
+  createGoalCategory(data: any): Promise<typeof goalCategories.$inferSelect>;
+  deleteGoalCategory(id: number, familyId: number): Promise<void>;
+
+  getGoals(familyId: number): Promise<(typeof goals.$inferSelect)[]>;
+  getGoal(id: number): Promise<typeof goals.$inferSelect | undefined>;
+  createGoal(data: any): Promise<typeof goals.$inferSelect>;
+  updateGoal(id: number, familyId: number, data: any): Promise<typeof goals.$inferSelect>;
+  deleteGoal(id: number, familyId: number): Promise<void>;
+
+  getGoalItems(goalId: number): Promise<(typeof goalItems.$inferSelect)[]>;
+  createGoalItem(data: any): Promise<typeof goalItems.$inferSelect>;
+  updateGoalItem(id: number, data: any): Promise<typeof goalItems.$inferSelect>;
+  deleteGoalItem(id: number): Promise<void>;
+  getGoalItemWithGoal(itemId: number): Promise<{ itemId: number; goalId: number; familyId: number; visibility: string; creatorId: string } | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -492,6 +508,76 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(diaryEntries.createdAt);
     return entries;
+  }
+
+  async getGoalCategories(familyId: number) {
+    return db.select().from(goalCategories).where(eq(goalCategories.familyId, familyId)).orderBy(goalCategories.name);
+  }
+
+  async createGoalCategory(data: any) {
+    const [cat] = await db.insert(goalCategories).values(data).returning();
+    return cat;
+  }
+
+  async deleteGoalCategory(id: number, familyId: number) {
+    await db.delete(goalCategories).where(and(eq(goalCategories.id, id), eq(goalCategories.familyId, familyId)));
+  }
+
+  async getGoals(familyId: number) {
+    return db.select().from(goals).where(eq(goals.familyId, familyId)).orderBy(desc(goals.updatedAt));
+  }
+
+  async getGoal(id: number) {
+    const [goal] = await db.select().from(goals).where(eq(goals.id, id));
+    return goal;
+  }
+
+  async createGoal(data: any) {
+    const [goal] = await db.insert(goals).values(data).returning();
+    return goal;
+  }
+
+  async updateGoal(id: number, familyId: number, data: any) {
+    const [updated] = await db.update(goals).set({ ...data, updatedAt: new Date() }).where(and(eq(goals.id, id), eq(goals.familyId, familyId))).returning();
+    return updated;
+  }
+
+  async deleteGoal(id: number, familyId: number) {
+    await db.delete(goalItems).where(eq(goalItems.goalId, id));
+    await db.delete(goals).where(and(eq(goals.id, id), eq(goals.familyId, familyId)));
+  }
+
+  async getGoalItems(goalId: number) {
+    return db.select().from(goalItems).where(eq(goalItems.goalId, goalId)).orderBy(asc(goalItems.sortOrder));
+  }
+
+  async createGoalItem(data: any) {
+    const [item] = await db.insert(goalItems).values(data).returning();
+    return item;
+  }
+
+  async updateGoalItem(id: number, data: any) {
+    const [updated] = await db.update(goalItems).set(data).where(eq(goalItems.id, id)).returning();
+    return updated;
+  }
+
+  async deleteGoalItem(id: number) {
+    await db.delete(goalItems).where(eq(goalItems.id, id));
+  }
+
+  async getGoalItemWithGoal(itemId: number) {
+    const [row] = await db
+      .select({
+        itemId: goalItems.id,
+        goalId: goalItems.goalId,
+        familyId: goals.familyId,
+        visibility: goals.visibility,
+        creatorId: goals.creatorId,
+      })
+      .from(goalItems)
+      .innerJoin(goals, eq(goalItems.goalId, goals.id))
+      .where(eq(goalItems.id, itemId));
+    return row || null;
   }
 }
 

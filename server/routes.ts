@@ -729,5 +729,161 @@ export async function registerRoutes(
     }
   });
 
+  // ── Goals ──
+
+  app.get('/api/goals/categories', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const categories = await storage.getGoalCategories(req.family.id);
+      res.json(categories);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch categories" });
+    }
+  });
+
+  app.post('/api/goals/categories', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const { name, icon, color } = req.body;
+      if (!name) return res.status(400).json({ message: "Name is required" });
+      const cat = await storage.createGoalCategory({ familyId: req.family.id, name, icon: icon || null, color: color || null });
+      res.json(cat);
+    } catch (err: any) {
+      console.error("Category creation error:", err.message || err);
+      res.status(500).json({ message: "Failed to create category" });
+    }
+  });
+
+  app.delete('/api/goals/categories/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      await storage.deleteGoalCategory(Number(req.params.id), req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete category" });
+    }
+  });
+
+  app.get('/api/goals', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const allGoals = await storage.getGoals(req.family.id);
+      const userId = req.user.claims.sub;
+      const visible = allGoals.filter((g: any) => {
+        if (g.visibility === "family") return true;
+        if (g.creatorId === userId) return true;
+        return false;
+      });
+      res.json(visible);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch goals" });
+    }
+  });
+
+  app.post('/api/goals', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { title, description, categoryId, type, progressType, visibility, targetValue, unit, dueDate, linkedSavingsGoalId } = req.body;
+      if (!title) return res.status(400).json({ message: "Title is required" });
+      const goal = await storage.createGoal({
+        familyId: req.family.id,
+        creatorId: userId,
+        title,
+        description: description || null,
+        categoryId: categoryId || null,
+        type: type || "short-term",
+        progressType: progressType || "checklist",
+        visibility: visibility || "personal",
+        status: "active",
+        targetValue: targetValue || null,
+        currentValue: "0",
+        unit: unit || null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        linkedSavingsGoalId: linkedSavingsGoalId || null,
+      });
+      res.json(goal);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create goal" });
+    }
+  });
+
+  app.patch('/api/goals/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const goal = await storage.getGoal(Number(req.params.id));
+      if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
+      if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
+      const updated = await storage.updateGoal(goal.id, req.family.id, req.body);
+      if (!updated) return res.status(404).json({ message: "Goal not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update goal" });
+    }
+  });
+
+  app.delete('/api/goals/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const goal = await storage.getGoal(Number(req.params.id));
+      if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
+      if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
+      await storage.deleteGoal(goal.id, req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete goal" });
+    }
+  });
+
+  app.get('/api/goals/:id/items', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const goal = await storage.getGoal(Number(req.params.id));
+      if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
+      const userId = req.user.claims.sub;
+      if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
+      const items = await storage.getGoalItems(goal.id);
+      res.json(items);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch items" });
+    }
+  });
+
+  app.post('/api/goals/:id/items', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const goal = await storage.getGoal(Number(req.params.id));
+      if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
+      const userId = req.user.claims.sub;
+      if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
+      const { title, sortOrder } = req.body;
+      if (!title) return res.status(400).json({ message: "Title is required" });
+      const item = await storage.createGoalItem({ goalId: goal.id, title, sortOrder: sortOrder || 0 });
+      res.json(item);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create item" });
+    }
+  });
+
+  app.patch('/api/goals/items/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const item = await storage.getGoalItemWithGoal(Number(req.params.id));
+      if (!item || item.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
+      const userId = req.user.claims.sub;
+      if (item.visibility === "personal" && item.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
+      const updated = await storage.updateGoalItem(item.itemId, req.body);
+      if (!updated) return res.status(404).json({ message: "Item not found" });
+      res.json(updated);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update item" });
+    }
+  });
+
+  app.delete('/api/goals/items/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const item = await storage.getGoalItemWithGoal(Number(req.params.id));
+      if (!item || item.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
+      const userId = req.user.claims.sub;
+      if (item.visibility === "personal" && item.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
+      await storage.deleteGoalItem(item.itemId);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete item" });
+    }
+  });
+
   return httpServer;
 }

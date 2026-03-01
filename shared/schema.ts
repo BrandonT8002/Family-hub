@@ -84,6 +84,45 @@ export const savingsGoals = pgTable("savings_goals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const goalCategories = pgTable("goal_categories", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  name: text("name").notNull(),
+  icon: text("icon"),
+  color: text("color"),
+});
+
+export const goals = pgTable("goals", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  creatorId: text("creator_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  categoryId: integer("category_id").references(() => goalCategories.id),
+  type: text("type").notNull().default("short-term"),
+  progressType: text("progress_type").notNull().default("checklist"),
+  visibility: text("visibility").notNull().default("personal"),
+  status: text("status").notNull().default("active"),
+  targetValue: numeric("target_value"),
+  currentValue: numeric("current_value").default("0"),
+  unit: text("unit"),
+  dueDate: timestamp("due_date"),
+  streak: integer("streak").default(0),
+  bestStreak: integer("best_streak").default(0),
+  lastStreakDate: timestamp("last_streak_date"),
+  linkedSavingsGoalId: integer("linked_savings_goal_id").references(() => savingsGoals.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const goalItems = pgTable("goal_items", {
+  id: serial("id").primaryKey(),
+  goalId: integer("goal_id").references(() => goals.id).notNull(),
+  title: text("title").notNull(),
+  isCompleted: boolean("is_completed").default(false),
+  sortOrder: integer("sort_order").default(0),
+});
+
 export const groceryLists = pgTable("grocery_lists", {
   id: serial("id").primaryKey(),
   familyId: integer("family_id").references(() => families.id).notNull(),
@@ -205,6 +244,22 @@ export type Block = typeof blocks.$inferSelect;
 export const insertFinancialScheduleSchema = createInsertSchema(financialSchedule).omit({ id: true });
 export type InsertFinancialSchedule = z.infer<typeof insertFinancialScheduleSchema>;
 export type FinancialSchedule = typeof financialSchedule.$inferSelect;
+
+export const insertSavingsGoalSchema = createInsertSchema(savingsGoals).omit({ id: true, createdAt: true });
+export type InsertSavingsGoal = z.infer<typeof insertSavingsGoalSchema>;
+export type SavingsGoal = typeof savingsGoals.$inferSelect;
+
+export const insertGoalSchema = createInsertSchema(goals).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertGoal = z.infer<typeof insertGoalSchema>;
+export type Goal = typeof goals.$inferSelect;
+
+export const insertGoalItemSchema = createInsertSchema(goalItems).omit({ id: true });
+export type InsertGoalItem = z.infer<typeof insertGoalItemSchema>;
+export type GoalItem = typeof goalItems.$inferSelect;
+
+export const insertGoalCategorySchema = createInsertSchema(goalCategories).omit({ id: true });
+export type InsertGoalCategory = z.infer<typeof insertGoalCategorySchema>;
+export type GoalCategory = typeof goalCategories.$inferSelect;
 
 export const insertDiaryEntrySchema = createInsertSchema(diaryEntries).omit({ id: true, createdAt: true, updatedAt: true, isDeleted: true, deletedAt: true });
 export type InsertDiaryEntry = z.infer<typeof insertDiaryEntrySchema>;

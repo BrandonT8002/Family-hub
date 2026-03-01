@@ -6,6 +6,7 @@ import {
   ShoppingCart, 
   MessageSquare, 
   BookOpen,
+  Target,
   LogOut,
   Settings
 } from "lucide-react";
@@ -34,6 +35,7 @@ const navItems = [
   { title: "Shopping", url: "/groceries", icon: ShoppingCart },
   { title: "Chat", url: "/chat", icon: MessageSquare },
   { title: "Diary", url: "/diary", icon: BookOpen },
+  { title: "Goals", url: "/goals", icon: Target },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 

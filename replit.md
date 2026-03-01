@@ -11,9 +11,9 @@ A premium family productivity "operating system" web app.
 ## Project Structure
 ```
 client/src/
-  pages/        - Dashboard, Schedule, Money, Groceries, GroceryListDetail, Chat, Settings
+  pages/        - Dashboard, Schedule, Money, Groceries, GroceryListDetail, Chat, Diary, Goals, Settings
   components/   - Layout, AppSidebar, UI components (shadcn)
-  hooks/        - use-auth, use-family, use-chat
+  hooks/        - use-auth, use-family, use-chat, use-expenses, use-diary, use-goals
   lib/          - queryClient
 shared/
   schema.ts     - Drizzle schema (all tables)
@@ -34,6 +34,9 @@ server/
 - **expenses** - Money tracking
 - **financial_schedule** - Bills/paydays (creatorId, billType, category, notes, isPaid, autoPay, reminderDays)
 - **savings_goals** - Family savings
+- **goal_categories** - User-created goal categories (name, icon, color)
+- **goals** - Goal tracking (title, description, categoryId, type [short/long-term], progressType [checklist/numeric/streak/milestone], visibility [personal/family], status [active/completed/archived], targetValue, currentValue, unit, dueDate, streak, bestStreak, lastStreakDate, linkedSavingsGoalId)
+- **goal_items** - Checklist/milestone items for goals (title, isCompleted, sortOrder)
 - **grocery_lists** - Shopping lists (with creatorId, isPrivate for sharing control)
 - **grocery_items** - Items in lists
 - **conversations** - Chat conversations (group/dm), with status (active/pending for message requests)
@@ -50,7 +53,8 @@ server/
 - **Groceries**: Shopping lists with Wants/Needs categorization, private/shared toggle per list
 - **Chat**: Family group chat + private DMs with message request system, blocking, message deletion, media messages (photos, videos, voice notes via file upload + MediaRecorder API)
 - **Diary**: Protected private reflection space — PIN lock, mood tracking (10 moods), tags, photo attachments, privacy per entry, search/filter, mood insights with distribution charts, soft-delete with 30-day trash, diary settings (PIN, weekly reflection prompt)
-- **Settings**: Theme presets (Pastel, Colorful, Basic, Monochrome, Deep Night), font selection, per-module color customization (includes diary)
+- **Goals**: Comprehensive goal tracking with user-created categories (starter pack available), short-term and long-term goals, 4 progress types (checklist, numeric, streak/consistency, milestones), personal/family visibility, active/completed/archived status, due date tracking with overdue alerts, filtering by type/category, sorting by due date/recently updated, streak tracking with daily check-in and best streak counter
+- **Settings**: Theme presets (Pastel, Colorful, Basic, Monochrome, Deep Night), font selection, per-module color customization (includes diary and goals)
 
 ## Privacy Architecture
 - Role-based: Owner, Adult, Teen, Youth, Child, Caregiver

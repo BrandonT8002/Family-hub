@@ -49,6 +49,7 @@ export function Layout({ children }: { children: ReactNode }) {
     if (location.startsWith("/groceries")) return `bg-[${config.groceries}]`;
     if (location === "/chat") return `bg-[${config.chat}]`;
     if (location === "/diary") return `bg-[${config.diary || "#f5e6d3"}]`;
+    if (location === "/goals") return `bg-[${config.goals || "#d4edda"}]`;
     if (location === "/settings") return "bg-slate-100";
     return "bg-background";
   };
@@ -69,6 +70,7 @@ export function Layout({ children }: { children: ReactNode }) {
     else if (location.startsWith("/groceries")) bgColor = config.groceries;
     else if (location === "/chat") bgColor = config.chat;
     else if (location === "/diary") bgColor = config.diary || "#f5e6d3";
+    else if (location === "/goals") bgColor = config.goals || "#d4edda";
     else if (location === "/settings") bgColor = "#f1f5f9";
 
     return { 
