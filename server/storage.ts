@@ -3,6 +3,7 @@ import {
   families, familyMembers, events, expenses, groceryLists, groceryItems, chatMessages, users,
   financialSchedule, savingsGoals, conversations, conversationParticipants, blocks,
   diaryEntries, diarySettings, goals, goalItems, goalCategories, wishlists, wishlistItems,
+  leaveTimeSettings, leaveTimeOverrides, leaveTimeTemplates,
   type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage, type InsertDiaryEntry
 } from "@shared/schema";
 import { eq, desc, and, or, ne, inArray, isNull, asc } from "drizzle-orm";
@@ -648,6 +649,57 @@ export class DatabaseStorage implements IStorage {
 
   async deleteWishlistItem(id: number) {
     await db.delete(wishlistItems).where(eq(wishlistItems.id, id));
+  }
+
+  async getLeaveTimeSettings(familyId: number, userId: string) {
+    const [s] = await db.select().from(leaveTimeSettings).where(and(eq(leaveTimeSettings.familyId, familyId), eq(leaveTimeSettings.userId, userId)));
+    return s || null;
+  }
+
+  async getLeaveTimeSettingsForFamily(familyId: number) {
+    return db.select().from(leaveTimeSettings).where(eq(leaveTimeSettings.familyId, familyId));
+  }
+
+  async upsertLeaveTimeSettings(familyId: number, userId: string, data: any) {
+    const existing = await this.getLeaveTimeSettings(familyId, userId);
+    if (existing) {
+      const [updated] = await db.update(leaveTimeSettings).set(data).where(eq(leaveTimeSettings.id, existing.id)).returning();
+      return updated;
+    }
+    const [created] = await db.insert(leaveTimeSettings).values({ ...data, familyId, userId }).returning();
+    return created;
+  }
+
+  async getLeaveTimeOverride(settingsId: number, date: string) {
+    const [o] = await db.select().from(leaveTimeOverrides).where(and(eq(leaveTimeOverrides.settingsId, settingsId), eq(leaveTimeOverrides.date, date)));
+    return o || null;
+  }
+
+  async upsertLeaveTimeOverride(settingsId: number, date: string, data: any) {
+    const existing = await this.getLeaveTimeOverride(settingsId, date);
+    if (existing) {
+      const [updated] = await db.update(leaveTimeOverrides).set(data).where(eq(leaveTimeOverrides.id, existing.id)).returning();
+      return updated;
+    }
+    const [created] = await db.insert(leaveTimeOverrides).values({ ...data, settingsId, date }).returning();
+    return created;
+  }
+
+  async deleteLeaveTimeOverride(settingsId: number, date: string) {
+    await db.delete(leaveTimeOverrides).where(and(eq(leaveTimeOverrides.settingsId, settingsId), eq(leaveTimeOverrides.date, date)));
+  }
+
+  async getLeaveTimeTemplates(familyId: number, userId: string) {
+    return db.select().from(leaveTimeTemplates).where(and(eq(leaveTimeTemplates.familyId, familyId), eq(leaveTimeTemplates.userId, userId))).orderBy(desc(leaveTimeTemplates.createdAt));
+  }
+
+  async createLeaveTimeTemplate(data: any) {
+    const [t] = await db.insert(leaveTimeTemplates).values(data).returning();
+    return t;
+  }
+
+  async deleteLeaveTimeTemplate(id: number, familyId: number, userId: string) {
+    await db.delete(leaveTimeTemplates).where(and(eq(leaveTimeTemplates.id, id), eq(leaveTimeTemplates.familyId, familyId), eq(leaveTimeTemplates.userId, userId)));
   }
 }
 

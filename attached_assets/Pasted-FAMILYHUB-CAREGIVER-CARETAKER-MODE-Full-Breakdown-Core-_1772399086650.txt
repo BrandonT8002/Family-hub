@@ -1,0 +1,286 @@
+FAMILYHUB — CAREGIVER / CARETAKER MODE (Full Breakdown)
+
+Core Purpose
+
+Caregiver Mode is designed for:
+
+• Babysitters
+• Nannies
+• Grandparents
+• Trusted relatives
+• Special needs aides
+• Temporary guardians
+
+It allows families to include trusted help without giving them full family access.
+
+It is structured access, not family membership.
+
+⸻
+
+1. Caregiver Is NOT a Full Family Member
+
+Caregivers:
+
+• Do not count as regular adult family members
+• Do not get full family visibility
+• Do not access finances
+• Do not access diary
+• Do not access private chats
+• Cannot change permissions
+• Cannot add members
+
+They are limited-access users.
+
+⸻
+
+2. How Caregiver Is Added
+
+Owner adds caregiver through:
+
+Settings → Add Caregiver
+
+Owner sets:
+
+• Access duration (temporary or ongoing)
+• What child/individual they are responsible for
+• What features they can access
+• Chat permissions
+• Schedule permissions
+
+Caregiver must accept invitation.
+
+⸻
+
+3. Caregiver Access Options
+
+Owner chooses what caregiver can see:
+
+A) Schedule Access
+
+• See assigned events only
+OR
+• See child’s schedule only
+OR
+• See shared family events
+
+Cannot see:
+• Private adult schedules
+• Private teen schedules
+
+⸻
+
+B) Care Notes Access
+
+Caregiver can log:
+
+• Feeding times
+• Diaper changes
+• Medication given
+• Nap times
+• Behavioral notes
+• Mood notes
+
+This integrates with:
+
+Baby / Special Needs Care Logs.
+
+Parents always see logs.
+Caregiver cannot delete past entries unless allowed.
+
+⸻
+
+C) Limited Chat Access
+
+Caregiver can:
+
+• Message assigned parents
+• Message about assigned child
+• Participate in dedicated caregiver group chat
+
+Caregiver cannot:
+
+• Access full family chat
+• See private adult chats
+• See teen private chats
+
+⸻
+
+D) Media Access
+
+Caregiver can:
+
+• Upload photos related to child
+• Share updates
+
+Owner controls:
+
+• Whether caregiver can download media
+• Whether caregiver can share media outside app
+
+Minors’ media sharing controlled by owner.
+
+⸻
+
+4. Duration Control
+
+Caregiver access can be:
+
+• One-day access
+• Weekend access
+• Weekly recurring
+• Ongoing
+
+Owner can revoke at any time.
+
+If revoked:
+• Immediate removal
+• No residual access
+• Data remains in family logs
+
+⸻
+
+5. Capacity Limits
+
+Caregiver accounts are limited.
+
+Purpose:
+
+• Prevent free expansion loophole
+• Prevent business abuse
+• Protect family structure
+
+Exact limits can vary by subscription tier.
+
+⸻
+
+6. Caregiver Dashboard
+
+Caregiver sees simplified dashboard:
+
+• Assigned child
+• Today’s schedule
+• Care log entry button
+• Contact parent button
+
+No financial widgets.
+No goals tab.
+No diary tab.
+No money tab.
+
+Clean and focused.
+
+⸻
+
+7. Emergency Controls
+
+Parents can enable:
+
+• Emergency contact access
+• Quick call button
+• Medical info (optional)
+• Allergy list
+
+Caregiver sees only what parent allows.
+
+⸻
+
+8. Privacy Protection
+
+Caregiver cannot:
+
+• View financial data
+• View wishlist (unless shared)
+• View goals (unless shared)
+• View adult chat
+• View private schedule
+• See diary
+
+Caregiver does not become part of permanent family structure.
+
+⸻
+
+9. Care Notes System (Integrated)
+
+Care Notes allow logging:
+
+• Time-stamped entries
+• Editable by parent
+• Locked after 24 hours (optional setting)
+
+Care Notes help:
+
+• Shift change handoffs
+• Consistency tracking
+• Special needs documentation
+• Medication tracking
+
+Parents can download/export care logs if needed (future phase).
+
+⸻
+
+10. Abuse Reporting & Safety
+
+Caregiver can:
+
+• Report concern to owner
+• Flag safety issue
+• Log incident report
+
+Parents can:
+
+• Remove caregiver immediately
+• Lock caregiver account
+
+⸻
+
+11. Cross-Family Considerations
+
+Caregiver does not gain access to:
+
+• Connected outside families
+• Shared external wishlists
+• External chats
+
+Access is strictly internal.
+
+⸻
+
+12. Emotional Impact
+
+This feature:
+
+• Reduces parent anxiety
+• Increases accountability
+• Supports blended families
+• Supports special needs households
+• Makes shift transitions smoother
+
+If removed:
+Parents would feel less supported and less organized.
+
+⸻
+
+13. MVP Version
+
+For beta:
+
+• Add caregiver
+• Assign child
+• Limited schedule access
+• Care log entry
+• Parent messaging
+• Revoke access
+
+Advanced layers (medical, exports, etc.) can come later.
+
+⸻
+
+14. Business Protection
+
+Caregiver mode cannot:
+
+• Replace business version
+• Scale into workforce management
+• Circumvent subscription limits
+
+It remains family-support-focused.

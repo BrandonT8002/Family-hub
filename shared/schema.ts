@@ -229,6 +229,38 @@ export const diarySettings = pgTable("diary_settings", {
   weeklyReflectionEnabled: boolean("weekly_reflection_enabled").default(false).notNull(),
 });
 
+export const leaveTimeSettings = pgTable("leave_time_settings", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  isEnabled: boolean("is_enabled").default(true).notNull(),
+  schedule: jsonb("schedule").$type<Record<string, string | null>>(),
+  reminderMinutes: integer("reminder_minutes").default(10).notNull(),
+  visibility: text("visibility").default("private").notNull(),
+  showOnDashboard: boolean("show_on_dashboard").default(true).notNull(),
+  checklistEnabled: boolean("checklist_enabled").default(true).notNull(),
+  defaultChecklist: text("default_checklist").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const leaveTimeOverrides = pgTable("leave_time_overrides", {
+  id: serial("id").primaryKey(),
+  settingsId: integer("settings_id").references(() => leaveTimeSettings.id).notNull(),
+  date: text("date").notNull(),
+  leaveTime: text("leave_time"),
+  isSkipped: boolean("is_skipped").default(false).notNull(),
+  customChecklist: text("custom_checklist").array(),
+});
+
+export const leaveTimeTemplates = pgTable("leave_time_templates", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  name: text("name").notNull(),
+  items: text("items").array().notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const blocks = pgTable("blocks", {
   id: serial("id").primaryKey(),
   blockerId: text("blocker_id").references(() => users.id).notNull(),
@@ -306,3 +338,10 @@ export type DiarySettings = typeof diarySettings.$inferSelect;
 
 export type FamilyMember = typeof familyMembers.$inferSelect;
 export type ConversationParticipant = typeof conversationParticipants.$inferSelect;
+
+export const insertLeaveTimeSettingsSchema = createInsertSchema(leaveTimeSettings).omit({ id: true, createdAt: true });
+export type InsertLeaveTimeSettings = z.infer<typeof insertLeaveTimeSettingsSchema>;
+export type LeaveTimeSettings = typeof leaveTimeSettings.$inferSelect;
+
+export type LeaveTimeOverride = typeof leaveTimeOverrides.$inferSelect;
+export type LeaveTimeTemplate = typeof leaveTimeTemplates.$inferSelect;

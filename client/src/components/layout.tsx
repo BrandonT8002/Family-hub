@@ -1,8 +1,7 @@
 import { ReactNode, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useFamily, useCreateFamily } from "@/hooks/use-family";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "./app-sidebar";
+import { BottomNav } from "./bottom-nav";
 import LandingPage from "@/pages/landing";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -34,27 +33,6 @@ export function Layout({ children }: { children: ReactNode }) {
     { name: "Night", colors: { home: "#1e293b", schedule: "#334155", money: "#475569", groceries: "#64748b", chat: "#94a3b8", diary: "#78716c" } },
   ];
 
-  const getPastelBg = () => {
-    const config = (family?.themeConfig as any) || {
-      home: "#b3d9ff",
-      schedule: "#e0b3ff",
-      money: "#ffb3c1",
-      groceries: "#ffd9b3",
-      chat: "#b3ffcc"
-    };
-
-    if (location === "/") return `bg-[${config.home}]`;
-    if (location === "/schedule") return `bg-[${config.schedule}]`;
-    if (location === "/money") return `bg-[${config.money}]`;
-    if (location.startsWith("/groceries")) return `bg-[${config.groceries}]`;
-    if (location === "/chat") return `bg-[${config.chat}]`;
-    if (location === "/diary") return `bg-[${config.diary || "#f5e6d3"}]`;
-    if (location === "/goals") return `bg-[${config.goals || "#d4edda"}]`;
-    if (location === "/wishlists") return `bg-[${config.wishlists || "#fce4ec"}]`;
-    if (location === "/settings") return "bg-slate-100";
-    return "bg-background";
-  };
-
   const getStyle = () => {
     const config = (family?.themeConfig as any) || {
       home: "#b3d9ff",
@@ -73,6 +51,7 @@ export function Layout({ children }: { children: ReactNode }) {
     else if (location === "/diary") bgColor = config.diary || "#f5e6d3";
     else if (location === "/goals") bgColor = config.goals || "#d4edda";
     else if (location === "/wishlists") bgColor = config.wishlists || "#fce4ec";
+    else if (location === "/leave-time") bgColor = config.leaveTime || "#e8f5e9";
     else if (location === "/settings") bgColor = "#f1f5f9";
 
     return { 
@@ -171,38 +150,37 @@ export function Layout({ children }: { children: ReactNode }) {
     );
   }
 
-  const style = {
-    "--sidebar-width": "18rem",
-  } as React.CSSProperties;
-
   return (
-    <SidebarProvider style={style}>
-      <div 
-        className="flex h-screen w-full transition-colors duration-500 text-foreground overflow-hidden"
-        style={getStyle()}
-      >
-        <AppSidebar />
-        <div className="flex flex-col flex-1 w-full relative overflow-hidden">
-          <header className="flex lg:hidden items-center p-4 border-b border-border/50 glass z-10 sticky top-0">
-            <SidebarTrigger className="hover-elevate" />
-            <h1 className="ml-4 font-display font-semibold text-lg">{family.name}</h1>
-          </header>
-          <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
-            <AnimatePresence mode="wait">
-              <motion.div 
-                key={location}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.3 }}
-                className="max-w-6xl mx-auto"
-              >
-                {children}
-              </motion.div>
-            </AnimatePresence>
-          </main>
+    <div 
+      className="min-h-screen w-full transition-colors duration-500 text-foreground flex flex-col"
+      style={getStyle()}
+    >
+      <header className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-white/60 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-sm text-primary font-black text-sm">
+            {family.name?.[0] || "F"}
+          </div>
+          <h1 className="text-sm font-bold text-foreground/80 tracking-tight" data-testid="text-family-name">{family.name}</h1>
         </div>
-      </div>
-    </SidebarProvider>
+      </header>
+      <main
+        id="main-scroll-area"
+        className="flex-1 overflow-y-auto pb-24 px-4 md:px-6 lg:px-8"
+      >
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={location}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.3 }}
+            className="max-w-6xl mx-auto"
+          >
+            {children}
+          </motion.div>
+        </AnimatePresence>
+      </main>
+      <BottomNav />
+    </div>
   );
 }

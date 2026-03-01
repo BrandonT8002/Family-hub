@@ -1050,5 +1050,156 @@ export async function registerRoutes(
     }
   });
 
+  // ── Leave Time ──
+
+  app.get('/api/leave-time/settings', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
+      res.json(settings);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch leave time settings" });
+    }
+  });
+
+  app.put('/api/leave-time/settings', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { isEnabled, schedule, reminderMinutes, visibility, showOnDashboard, checklistEnabled, defaultChecklist } = req.body;
+      const settings = await storage.upsertLeaveTimeSettings(req.family.id, userId, {
+        isEnabled: isEnabled !== undefined ? isEnabled : true,
+        schedule: schedule || null,
+        reminderMinutes: reminderMinutes || 10,
+        visibility: visibility || "private",
+        showOnDashboard: showOnDashboard !== undefined ? showOnDashboard : true,
+        checklistEnabled: checklistEnabled !== undefined ? checklistEnabled : true,
+        defaultChecklist: defaultChecklist || null,
+      });
+      res.json(settings);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to save leave time settings" });
+    }
+  });
+
+  app.get('/api/leave-time/today', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
+      if (!settings || !settings.isEnabled) return res.json({ hasLeaveTime: false });
+
+      const today = new Date().toISOString().split('T')[0];
+      const override = await storage.getLeaveTimeOverride(settings.id, today);
+
+      if (override?.isSkipped) return res.json({ hasLeaveTime: false, skipped: true });
+
+      const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const dayKey = dayNames[new Date().getDay()];
+      const scheduleTime = (settings.schedule as any)?.[dayKey] || null;
+      const leaveTime = override?.leaveTime || scheduleTime;
+
+      if (!leaveTime) return res.json({ hasLeaveTime: false, noTimeSet: true });
+
+      const checklist = override?.customChecklist || settings.defaultChecklist || [];
+
+      res.json({
+        hasLeaveTime: true,
+        leaveTime,
+        checklist,
+        reminderMinutes: settings.reminderMinutes,
+        showOnDashboard: settings.showOnDashboard,
+        checklistEnabled: settings.checklistEnabled,
+        isOverride: !!override?.leaveTime,
+      });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch today's leave time" });
+    }
+  });
+
+  app.put('/api/leave-time/override', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
+      if (!settings) return res.status(404).json({ message: "No leave time settings found" });
+
+      const { date, leaveTime, isSkipped, customChecklist } = req.body;
+      if (!date) return res.status(400).json({ message: "Date is required" });
+
+      const override = await storage.upsertLeaveTimeOverride(settings.id, date, {
+        leaveTime: leaveTime || null,
+        isSkipped: isSkipped || false,
+        customChecklist: customChecklist || null,
+      });
+      res.json(override);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to save override" });
+    }
+  });
+
+  app.delete('/api/leave-time/override/:date', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
+      if (!settings) return res.status(404).json({ message: "No leave time settings found" });
+      await storage.deleteLeaveTimeOverride(settings.id, req.params.date);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete override" });
+    }
+  });
+
+  app.get('/api/leave-time/templates', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const templates = await storage.getLeaveTimeTemplates(req.family.id, userId);
+      res.json(templates);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch templates" });
+    }
+  });
+
+  app.post('/api/leave-time/templates', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { name, items } = req.body;
+      if (!name || !items?.length) return res.status(400).json({ message: "Name and items are required" });
+      const template = await storage.createLeaveTimeTemplate({ familyId: req.family.id, userId, name, items });
+      res.json(template);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create template" });
+    }
+  });
+
+  app.delete('/api/leave-time/templates/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      await storage.deleteLeaveTimeTemplate(Number(req.params.id), req.family.id, userId);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete template" });
+    }
+  });
+
+  app.get('/api/leave-time/family', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const allSettings = await storage.getLeaveTimeSettingsForFamily(req.family.id);
+      const visible = allSettings.filter((s: any) => s.visibility === "family");
+      const dayNames = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+      const dayKey = dayNames[new Date().getDay()];
+      const today = new Date().toISOString().split('T')[0];
+
+      const result = await Promise.all(visible.map(async (s: any) => {
+        const override = await storage.getLeaveTimeOverride(s.id, today);
+        if (override?.isSkipped) return null;
+        const leaveTime = override?.leaveTime || (s.schedule as any)?.[dayKey] || null;
+        if (!leaveTime) return null;
+        return { userId: s.userId, leaveTime };
+      }));
+
+      res.json(result.filter(Boolean));
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch family leave times" });
+    }
+  });
+
   return httpServer;
 }

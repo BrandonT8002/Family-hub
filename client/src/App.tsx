@@ -16,6 +16,7 @@ import Chat from "@/pages/chat";
 import Diary from "@/pages/diary";
 import Goals from "@/pages/goals";
 import Wishlists from "@/pages/wishlists";
+import LeaveTime from "@/pages/leave-time";
 import Settings from "@/pages/settings";
 
 function Router() {
@@ -31,6 +32,7 @@ function Router() {
         <Route path="/diary" component={Diary}/>
         <Route path="/goals" component={Goals}/>
         <Route path="/wishlists" component={Wishlists}/>
+        <Route path="/leave-time" component={LeaveTime}/>
         <Route path="/settings" component={Settings}/>
         <Route component={NotFound} />
       </Switch>
