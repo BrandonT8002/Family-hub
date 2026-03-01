@@ -1,0 +1,267 @@
+Overview
+
+FamilyHub is a premium family productivity and connection app designed to help households stay organized, financially aware, academically engaged, and emotionally aligned.
+
+It is not a social media app.
+It is not a simple to-do list.
+It is a structured family operating system.
+
+The app focuses on:
+	•	Schedule coordination
+	•	Financial awareness
+	•	Academic tracking
+	•	Shared goals
+	•	Communication
+	•	Grocery and shopping tracking
+	•	Memory preservation
+
+The goal is long-term retention through usefulness, not dopamine spam.
+
+⸻
+
+Core Philosophy
+
+FamilyHub should:
+	•	Save families time
+	•	Reduce mental load
+	•	Prevent forgotten events
+	•	Improve financial awareness
+	•	Strengthen parent–student alignment
+	•	Encourage growth and accountability
+	•	Maintain privacy within the family structure
+	•	Feel motivating but never pushy
+
+It should feel like a family command center, not an alarm clock.
+
+⸻
+
+User Structure
+
+Roles
+	•	Owner (primary account holder)
+	•	Adults (18+)
+	•	Teens (15–17, near-adult permissions)
+	•	Youth (13–14, limited communication)
+	•	Children (12 and under, no email required)
+	•	Optional Caregiver (limited access)
+
+Children 12 and under:
+	•	Do not require email
+	•	Account controlled by parent
+	•	Notifications only with permission
+
+Teens 13+:
+	•	Can attach email
+	•	Permission changes require owner approval
+
+⸻
+
+Core Modules (Family Version)
+
+1. Schedule System
+	•	Add events (one-time or recurring)
+	•	Recurrence: daily, weekly, monthly, yearly
+	•	Events can be:
+	•	Personal
+	•	Shared with family
+	•	Clean list view
+	•	Future: month calendar view
+	•	Financial schedule items (rent, subscriptions, paydays) exist inside Money section, not family calendar
+	•	Gentle reminders
+	•	Optional “What time are you walking out today?” feature
+	•	Pre-leave checklist option (keys, wallet, ID, etc.)
+
+⸻
+
+2. Family Chat
+	•	Group chat
+	•	Private chat (no owner surveillance)
+	•	Message requests must be accepted before visible
+	•	Chat between approved families allowed
+	•	Block feature with 24-hour cooldown
+	•	Abuse reporting option
+
+Privacy is built in, not constantly advertised.
+
+⸻
+
+3. Money & Financial Awareness
+	•	Manual expense tracking
+	•	Categorized spending
+	•	Visual charts (pie, bar)
+	•	Savings goals
+	•	Shared goals (example: couch fund)
+	•	Financial schedule (rent, Netflix, payday)
+	•	Grocery price tracking:
+	•	Manual item pricing
+	•	Track price changes per store
+	•	Weekly/monthly spending snapshots
+	•	Yearly financial snapshot
+	•	Optional receipt assist (semi-manual entry support)
+
+Goal: Increase awareness and long-term savings.
+
+⸻
+
+4. Grocery & Shopping Lists
+	•	Multiple lists
+	•	Wants vs Needs lists
+	•	Categorized by:
+	•	Meats
+	•	Dairy
+	•	Produce
+	•	Dry goods
+	•	Custom categories
+	•	Store selection (multiple stores supported)
+	•	Price logging per item
+	•	Tax calculator option
+	•	Historical price tracking
+	•	Weekly/monthly spend comparison
+
+⸻
+
+5. Academic Tracking
+
+Two modes:
+	•	Snapshot Mode (simple grade tracking)
+	•	Growth Mode (detailed tracking)
+
+Supports:
+	•	Percentage scale
+	•	A–F scale
+	•	Elementary (E/U/etc.)
+	•	Custom scale
+
+Features:
+	•	Track classes
+	•	Teacher name input
+	•	Parent notes
+	•	Grade trend over time
+	•	Shared or independent student view
+	•	Parent template builder
+
+Goal: Keep parent and student aligned without surveillance tone.
+
+⸻
+
+6. Goals System
+	•	Fully custom goal types (no forced templates)
+	•	Long-term and short-term
+	•	Shared family goals
+	•	Savings-linked goals
+	•	Progress tracking
+	•	Visual completion indicators
+	•	Yearly snapshots
+
+⸻
+
+7. Recipes
+	•	Store recipes
+	•	Add ingredients
+	•	Add to shopping list
+	•	Categorize recipes
+
+⸻
+
+8. Memories
+	•	Photo/video storage
+	•	Memory alerts (optional)
+	•	Birthday reminders (living or deceased)
+	•	Anniversaries
+	•	Remembrance dates
+
+Memories connected to chat area, not daily task feed.
+
+⸻
+
+9. Personal Dashboard
+
+User chooses what they see first:
+
+Options:
+	•	Today’s schedule
+	•	Sports scores (text only)
+	•	League news
+	•	Market updates
+	•	Inspirational quote
+	•	Family overview
+	•	This week summary
+
+No forced layout.
+Fully customizable.
+
+⸻
+
+10. Diary (Private)
+	•	Personal journal
+	•	Biometric lock
+	•	Optional PIN
+	•	User chooses which entries are shareable
+	•	Owner cannot see without permission
+	•	No forced transparency
+
+⸻
+
+Notifications Philosophy
+	•	Respectful
+	•	Functional
+	•	No addictive nudging
+	•	No “come back to app” spam
+	•	Schedule-based only
+
+⸻
+
+Retention Engines
+	•	Weekly snapshot
+	•	Monthly spending overview
+	•	Academic progress summary
+	•	Annual family review
+	•	Grocery cost trends
+	•	Goal completion timeline
+
+The app should hurt if removed because it saves time and preserves coordination.
+
+⸻
+
+Monetization (Family)
+	•	Paid only
+	•	7-day trial
+	•	Owner pays
+	•	Other members free
+	•	Base tier affordable
+	•	Emphasis on value, not ads
+
+⸻
+
+Business Mode (Separate Extension)
+
+Structured task coordination tool:
+	•	Task dependencies
+	•	Ownership tracking
+	•	Time-in-control tracking
+	•	Async updates
+	•	Professional themes
+	•	Role delegation
+	•	Workspace tiers (Core / Team / Expanded)
+
+Business is an extension, not the primary identity.
+
+⸻
+
+Core Emotional Goal
+
+If this app disappeared:
+
+Families would feel:
+	•	Disorganized
+	•	Less aligned
+	•	Financially less aware
+	•	More forgetful
+	•	Less connected
+
+The product should:
+	•	Increase trust
+	•	Increase shared understanding
+	•	Reduce forgotten responsibilities
+	•	Encourage growth
+	•	Make adulthood smoother for teens
