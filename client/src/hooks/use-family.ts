@@ -41,7 +41,7 @@ export function useUpdateFamily() {
 export function useCreateFamily() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string, themeConfig?: any }) => {
+    mutationFn: async (data: { name: string, themeConfig?: any, fontFamily?: string }) => {
       const res = await apiRequest("POST", api.family.create.path, data);
       return api.family.create.responses[201].parse(await res.json());
     },

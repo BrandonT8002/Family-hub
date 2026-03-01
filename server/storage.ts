@@ -108,11 +108,15 @@ export class DatabaseStorage implements IStorage {
       name, 
       ownerId,
       themeConfig: {
-        home: "#b3d9ff",
-        schedule: "#e0b3ff",
-        money: "#ffb3c1",
-        groceries: "#ffd9b3",
-        chat: "#b3ffcc"
+        home: "#f8f9fa",
+        schedule: "#f8f9fa",
+        money: "#f8f9fa",
+        groceries: "#f8f9fa",
+        chat: "#f8f9fa",
+        diary: "#f8f9fa",
+        goals: "#f8f9fa",
+        wishlists: "#f8f9fa",
+        leaveTime: "#f8f9fa"
       }
     }).returning();
     await db.insert(familyMembers).values({ familyId: family.id, userId: ownerId, role: "Owner" });
