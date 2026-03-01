@@ -80,9 +80,11 @@ export const savingsGoals = pgTable("savings_goals", {
 export const groceryLists = pgTable("grocery_lists", {
   id: serial("id").primaryKey(),
   familyId: integer("family_id").references(() => families.id).notNull(),
+  creatorId: text("creator_id").references(() => users.id),
   name: text("name").notNull(),
   type: text("type").default("Needs"),
   storeName: text("store_name"),
+  isPrivate: boolean("is_private").default(false),
 });
 
 export const groceryItems = pgTable("grocery_items", {
@@ -119,6 +121,9 @@ export const chatMessages = pgTable("chat_messages", {
   familyId: integer("family_id").references(() => families.id).notNull(),
   senderId: text("sender_id").references(() => users.id).notNull(),
   content: text("content").notNull(),
+  messageType: text("message_type").default("text"), // text, image, video, voice
+  mediaUrl: text("media_url"),
+  mediaDuration: integer("media_duration"), // seconds for voice/video
   isDeleted: boolean("is_deleted").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });

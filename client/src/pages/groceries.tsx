@@ -1,33 +1,49 @@
 import { useState } from "react";
-import { useGroceryLists, useCreateGroceryList } from "@/hooks/use-groceries";
+import { useGroceryLists, useCreateGroceryList, useUpdateGroceryList } from "@/hooks/use-groceries";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShoppingCart, Plus, ChevronRight, Store, Tag, ListChecks } from "lucide-react";
+import { ShoppingCart, Plus, ChevronRight, Store, Tag, ListChecks, Lock, Globe, MoreVertical } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Groceries() {
   const { data: lists, isLoading } = useGroceryLists();
   const createList = useCreateGroceryList();
+  const updateList = useUpdateGroceryList();
+  const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState("");
   const [type, setType] = useState("Needs");
   const [storeName, setStoreName] = useState("");
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     createList.mutate(
-      { name, type, storeName },
+      { name, type, storeName, isPrivate },
       { onSuccess: () => { 
         setIsOpen(false); 
         setName(""); 
         setStoreName("");
         setType("Needs");
+        setIsPrivate(false);
       } }
+    );
+  };
+
+  const togglePrivacy = (listId: number, currentPrivate: boolean) => {
+    updateList.mutate(
+      { id: listId, isPrivate: !currentPrivate },
+      { onSuccess: () => {
+        toast({ title: !currentPrivate ? "List set to private" : "List shared with family" });
+      }}
     );
   };
 
@@ -72,7 +88,17 @@ export default function Groceries() {
                   <Input value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="Walmart, Publix..." className="rounded-xl h-12 bg-muted/50 border-transparent focus-visible:ring-primary/20" />
                 </div>
               </div>
-              <Button type="submit" disabled={createList.isPending} className="w-full rounded-2xl h-14 text-lg font-bold shadow-xl shadow-primary/10 mt-2">
+              <div className="flex items-center justify-between bg-muted/30 p-4 rounded-xl">
+                <div className="flex items-center gap-2">
+                  {isPrivate ? <Lock className="w-4 h-4 text-muted-foreground" /> : <Globe className="w-4 h-4 text-muted-foreground" />}
+                  <div>
+                    <p className="text-sm font-semibold">{isPrivate ? "Private List" : "Shared List"}</p>
+                    <p className="text-xs text-muted-foreground">{isPrivate ? "Only you can see this list" : "Visible to all family members"}</p>
+                  </div>
+                </div>
+                <Switch checked={isPrivate} onCheckedChange={setIsPrivate} data-testid="switch-private" />
+              </div>
+              <Button type="submit" disabled={createList.isPending} className="w-full rounded-2xl h-14 text-lg font-bold shadow-xl shadow-primary/10 mt-2" data-testid="button-create-list">
                 {createList.isPending ? "Creating..." : "Start List"}
               </Button>
             </form>
@@ -98,34 +124,61 @@ export default function Groceries() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {lists?.map((list) => (
-            <Link key={list.id} href={`/groceries/${list.id}`}>
-              <Card className="rounded-[2rem] border-border/50 hover-elevate cursor-pointer group h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary/5">
-                <CardHeader className="p-6 pb-0">
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="p-3 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
-                      <ListChecks className="w-6 h-6" />
-                    </div>
-                    <Badge variant={list.type === "Wants" ? "secondary" : "default"} className="rounded-lg px-2.5 py-1">
-                      {list.type}
-                    </Badge>
-                  </div>
-                  <CardTitle className="text-2xl font-display font-bold group-hover:text-primary transition-colors">{list.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="p-6 pt-4">
-                  <div className="space-y-3">
-                    {list.storeName && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 w-fit px-3 py-1.5 rounded-xl font-medium">
-                        <Store className="w-4 h-4" /> {list.storeName}
+            <div key={list.id} className="relative group" data-testid={`card-list-${list.id}`}>
+              <Link href={`/groceries/${list.id}`}>
+                <Card className="rounded-[2rem] border-border/50 hover-elevate cursor-pointer h-full overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-primary/5">
+                  <CardHeader className="p-6 pb-0">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="p-3 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-300">
+                        <ListChecks className="w-6 h-6" />
                       </div>
-                    )}
-                    <div className="flex items-center justify-between text-sm pt-2">
-                      <span className="text-muted-foreground font-medium">Tap to open list</span>
-                      <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      <div className="flex items-center gap-2">
+                        {list.isPrivate && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-lg" data-testid={`badge-private-${list.id}`}>
+                            <Lock className="w-3 h-3" /> Private
+                          </div>
+                        )}
+                        <Badge variant={list.type === "Wants" ? "secondary" : "default"} className="rounded-lg px-2.5 py-1">
+                          {list.type}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </Link>
+                    <CardTitle className="text-2xl font-display font-bold group-hover:text-primary transition-colors">{list.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6 pt-4">
+                    <div className="space-y-3">
+                      {list.storeName && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 w-fit px-3 py-1.5 rounded-xl font-medium">
+                          <Store className="w-4 h-4" /> {list.storeName}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between text-sm pt-2">
+                        <span className="text-muted-foreground font-medium">Tap to open list</span>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+              <div className="absolute top-4 right-4 z-10 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 bg-background/80 backdrop-blur-sm shadow-sm" data-testid={`button-list-menu-${list.id}`}>
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="rounded-xl">
+                    <DropdownMenuItem 
+                      onClick={(e) => { e.preventDefault(); togglePrivacy(list.id, !!list.isPrivate); }}
+                      className="gap-2"
+                      data-testid={`button-toggle-privacy-${list.id}`}
+                    >
+                      {list.isPrivate ? <><Globe className="w-4 h-4" /> Share with Family</> : <><Lock className="w-4 h-4" /> Make Private</>}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
           ))}
         </div>
       )}

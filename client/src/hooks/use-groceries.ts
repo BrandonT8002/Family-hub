@@ -16,9 +16,22 @@ export function useGroceryLists() {
 export function useCreateGroceryList() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (data: { name: string; type?: string; storeName?: string }) => {
+    mutationFn: async (data: { name: string; type?: string; storeName?: string; isPrivate?: boolean }) => {
       const res = await apiRequest("POST", api.groceryLists.create.path, data);
       return api.groceryLists.create.responses[201].parse(await res.json());
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.groceryLists.list.path] });
+    },
+  });
+}
+
+export function useUpdateGroceryList() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; isPrivate?: boolean }) => {
+      const res = await apiRequest("PATCH", `/api/grocery-lists/${id}`, data);
+      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [api.groceryLists.list.path] });

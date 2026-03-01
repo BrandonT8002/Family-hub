@@ -4,6 +4,29 @@ import { storage } from "./storage";
 import { api, buildUrl } from "@shared/routes";
 import { z } from "zod";
 import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import express from "express";
+
+const uploadDir = path.join(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname) || ".bin";
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 50 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = /^(image|video|audio)\//;
+    if (allowed.test(file.mimetype)) cb(null, true);
+    else cb(new Error("Only image, video, and audio files are allowed"));
+  },
+});
 
 export async function registerRoutes(
   httpServer: Server,
@@ -11,6 +34,22 @@ export async function registerRoutes(
 ): Promise<Server> {
   await setupAuth(app);
   registerAuthRoutes(app);
+
+  app.use("/uploads", express.static(uploadDir));
+
+  app.post("/api/upload", isAuthenticated, upload.single("file"), (req: any, res) => {
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    const mimetype = req.file.mimetype;
+    let messageType = "image";
+    if (mimetype.startsWith("video/")) messageType = "video";
+    else if (mimetype.startsWith("audio/")) messageType = "voice";
+    res.json({
+      url: `/uploads/${req.file.filename}`,
+      messageType,
+      originalName: req.file.originalname,
+      size: req.file.size,
+    });
+  });
 
   const requireFamily = async (req: any, res: any, next: any) => {
     const userId = req.user?.claims?.sub;
@@ -199,18 +238,22 @@ export async function registerRoutes(
 
   // Groceries
   app.get(api.groceryLists.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
-    const lists = await storage.getGroceryLists(req.family.id);
+    const userId = req.user.claims.sub;
+    const lists = await storage.getGroceryLists(req.family.id, userId);
     res.json(lists);
   });
 
   app.post(api.groceryLists.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const input = api.groceryLists.create.input.parse(req.body);
+      const userId = req.user.claims.sub;
       const list = await storage.createGroceryList({
         ...input,
         familyId: req.family.id,
+        creatorId: userId,
         storeName: (req.body as any).storeName || null,
         type: input.type || "Needs",
+        isPrivate: (req.body as any).isPrivate || false,
       });
       res.status(201).json(list);
     } catch (err) {
@@ -221,8 +264,31 @@ export async function registerRoutes(
     }
   });
 
+  app.patch('/api/grocery-lists/:id', isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const id = Number(req.params.id);
+      const userId = req.user.claims.sub;
+      const list = await storage.getGroceryList(id);
+      if (!list) return res.status(404).json({ message: "List not found" });
+      if (list.familyId !== req.family.id) return res.status(403).json({ message: "Access denied" });
+      if (list.creatorId && list.creatorId !== userId) return res.status(403).json({ message: "Only the list creator can change privacy" });
+      const input = z.object({ isPrivate: z.boolean() }).parse(req.body);
+      const updated = await storage.updateGroceryList(id, { isPrivate: input.isPrivate });
+      res.json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) return res.status(400).json({ message: err.errors[0].message });
+      res.status(500).json({ message: "Failed to update list" });
+    }
+  });
+
   app.get(api.groceryItems.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
-    const items = await storage.getGroceryItems(Number(req.params.listId));
+    const listId = Number(req.params.listId);
+    const userId = req.user.claims.sub;
+    const list = await storage.getGroceryList(listId);
+    if (!list) return res.status(404).json({ message: "List not found" });
+    if (list.familyId !== req.family.id) return res.status(403).json({ message: "Access denied" });
+    if (list.isPrivate && list.creatorId !== userId) return res.status(403).json({ message: "This is a private list" });
+    const items = await storage.getGroceryItems(listId);
     res.json(items);
   });
 
@@ -366,11 +432,21 @@ export async function registerRoutes(
         return res.status(400).json({ message: "You must accept this conversation request first" });
       }
 
+      const mediaSchema = z.object({
+        messageType: z.enum(["text", "image", "video", "voice"]).optional().default("text"),
+        mediaUrl: z.string().startsWith("/uploads/").nullable().optional(),
+        mediaDuration: z.number().int().min(0).max(3600).nullable().optional(),
+      });
+      const mediaInput = mediaSchema.parse(req.body);
+
       const msg = await storage.createChatMessage({
         conversationId: conv.id,
         familyId: req.family.id,
         senderId: userId,
         content: input.content,
+        messageType: mediaInput.messageType,
+        mediaUrl: mediaInput.mediaUrl || null,
+        mediaDuration: mediaInput.mediaDuration || null,
       });
       res.status(201).json(msg);
     } catch (err) {

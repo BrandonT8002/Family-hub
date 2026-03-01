@@ -34,19 +34,19 @@ server/
 - **expenses** - Money tracking
 - **financial_schedule** - Bills/paydays
 - **savings_goals** - Family savings
-- **grocery_lists** - Shopping lists
+- **grocery_lists** - Shopping lists (with creatorId, isPrivate for sharing control)
 - **grocery_items** - Items in lists
 - **conversations** - Chat conversations (group/dm), with status (active/pending for message requests)
 - **conversation_participants** - Users in each conversation
-- **chat_messages** - Messages linked to conversations
+- **chat_messages** - Messages linked to conversations (messageType: text/image/video/voice, mediaUrl, mediaDuration)
 - **blocks** - User blocking system
 
 ## Features
 - **Dashboard**: Overview of events, expenses, savings
 - **Schedule**: Calendar with recurring events, personal/shared
 - **Money**: Expenses, financial schedule, savings goals
-- **Groceries**: Shopping lists with Wants/Needs categorization
-- **Chat**: Family group chat + private DMs with message request system, blocking, message deletion
+- **Groceries**: Shopping lists with Wants/Needs categorization, private/shared toggle per list
+- **Chat**: Family group chat + private DMs with message request system, blocking, message deletion, media messages (photos, videos, voice notes via file upload + MediaRecorder API)
 - **Settings**: Theme presets (Pastel, Colorful, Basic, Monochrome, Deep Night), font selection, per-module color customization
 
 ## Privacy Architecture

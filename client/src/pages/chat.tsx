@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { 
   useConversations, 
   useConversationMessages, 
@@ -10,6 +10,7 @@ import {
   useBlocks,
   useBlockUser,
   useUnblockUser,
+  useUploadMedia,
 } from "@/hooks/use-chat";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
@@ -31,6 +32,14 @@ import {
   UserPlus,
   MoreVertical,
   AlertCircle,
+  Image,
+  Video,
+  Mic,
+  MicOff,
+  Paperclip,
+  Play,
+  Pause,
+  Square,
 } from "lucide-react";
 import {
   Dialog,
@@ -67,8 +76,17 @@ export default function Chat() {
   const deleteMsg = useDeleteMessage();
   const blockUser = useBlockUser();
   const unblockUser = useUnblockUser();
+  const uploadMedia = useUploadMedia();
 
   const endRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [playingAudio, setPlayingAudio] = useState<number | null>(null);
+  const audioRefs = useRef<Record<number, HTMLAudioElement>>({});
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -131,6 +149,98 @@ export default function Chat() {
 
   const handleDeleteMsg = (msgId: number) => {
     deleteMsg.mutate(msgId);
+  };
+
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !activeConvoId) return;
+    try {
+      const result = await uploadMedia.mutateAsync(file);
+      sendMessage.mutate({
+        conversationId: activeConvoId,
+        content: result.messageType === "voice" ? "Voice note" : file.name,
+        messageType: result.messageType,
+        mediaUrl: result.url,
+      });
+    } catch {
+      toast({ title: "Upload failed", description: "Could not upload file.", variant: "destructive" });
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, [activeConvoId, uploadMedia, sendMessage, toast]);
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `voice-${Date.now()}.webm`, { type: "audio/webm" });
+        if (!activeConvoId) return;
+        try {
+          const result = await uploadMedia.mutateAsync(file);
+          sendMessage.mutate({
+            conversationId: activeConvoId,
+            content: "Voice note",
+            messageType: "voice",
+            mediaUrl: result.url,
+            mediaDuration: recordingDuration,
+          });
+        } catch {
+          toast({ title: "Upload failed", variant: "destructive" });
+        }
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+      setRecordingDuration(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingDuration(d => d + 1);
+      }, 1000);
+    } catch {
+      toast({ title: "Microphone access denied", description: "Please allow microphone access to record voice notes.", variant: "destructive" });
+    }
+  }, [activeConvoId, uploadMedia, sendMessage, toast, recordingDuration]);
+
+  const stopRecording = useCallback(() => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+    }
+  }, [isRecording]);
+
+  const toggleAudioPlayback = (msgId: number, url: string) => {
+    if (playingAudio === msgId) {
+      audioRefs.current[msgId]?.pause();
+      setPlayingAudio(null);
+    } else {
+      if (playingAudio !== null && audioRefs.current[playingAudio]) {
+        audioRefs.current[playingAudio].pause();
+      }
+      if (!audioRefs.current[msgId]) {
+        audioRefs.current[msgId] = new Audio(url);
+        audioRefs.current[msgId].onended = () => setPlayingAudio(null);
+      }
+      audioRefs.current[msgId].play();
+      setPlayingAudio(msgId);
+    }
+  };
+
+  const formatDuration = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${sec.toString().padStart(2, '0')}`;
   };
 
   const getConvoName = (convo: any) => {
@@ -479,13 +589,61 @@ export default function Chat() {
                           </Button>
                         )}
                         <div 
-                          className={`max-w-[75%] px-4 py-2.5 text-sm shadow-sm ${
-                            isMe 
-                              ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm' 
-                              : 'bg-muted border border-border/50 rounded-2xl rounded-tl-sm'
+                          className={`max-w-[75%] shadow-sm ${
+                            msg.messageType === "image" || msg.messageType === "video"
+                              ? 'rounded-2xl overflow-hidden'
+                              : `px-4 py-2.5 text-sm ${
+                                isMe 
+                                  ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm' 
+                                  : 'bg-muted border border-border/50 rounded-2xl rounded-tl-sm'
+                              }`
                           }`}
                         >
-                          {msg.content}
+                          {msg.messageType === "image" && msg.mediaUrl ? (
+                            <img 
+                              src={msg.mediaUrl} 
+                              alt={msg.content || "Image"} 
+                              className="max-w-[280px] max-h-[300px] rounded-2xl object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                              onClick={() => window.open(msg.mediaUrl, '_blank')}
+                              data-testid={`media-image-${msg.id}`}
+                            />
+                          ) : msg.messageType === "video" && msg.mediaUrl ? (
+                            <video 
+                              src={msg.mediaUrl} 
+                              controls 
+                              className="max-w-[300px] max-h-[240px] rounded-2xl"
+                              data-testid={`media-video-${msg.id}`}
+                            />
+                          ) : msg.messageType === "voice" && msg.mediaUrl ? (
+                            <div className={`flex items-center gap-3 min-w-[180px] px-4 py-2.5 ${
+                              isMe 
+                                ? 'bg-primary text-primary-foreground rounded-2xl rounded-tr-sm' 
+                                : 'bg-muted border border-border/50 rounded-2xl rounded-tl-sm'
+                            }`}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={`h-8 w-8 rounded-full shrink-0 ${
+                                  isMe ? 'hover:bg-primary-foreground/20 text-primary-foreground' : 'hover:bg-primary/10 text-primary'
+                                }`}
+                                onClick={() => toggleAudioPlayback(msg.id, msg.mediaUrl!)}
+                                data-testid={`button-play-voice-${msg.id}`}
+                              >
+                                {playingAudio === msg.id ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                              </Button>
+                              <div className="flex-1">
+                                <div className={`h-1 rounded-full ${isMe ? 'bg-primary-foreground/30' : 'bg-primary/20'}`}>
+                                  <div className={`h-full w-1/2 rounded-full ${isMe ? 'bg-primary-foreground' : 'bg-primary'}`} />
+                                </div>
+                              </div>
+                              <span className={`text-[10px] shrink-0 ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                {msg.mediaDuration ? formatDuration(msg.mediaDuration) : "0:00"}
+                              </span>
+                              <Mic className="w-3 h-3 opacity-50" />
+                            </div>
+                          ) : (
+                            msg.content
+                          )}
                         </div>
                       </div>
                     </div>
@@ -509,8 +667,65 @@ export default function Chat() {
                     <Check className="w-4 h-4 mr-1" /> Accept
                   </Button>
                 </div>
+              ) : isRecording ? (
+                <div className="flex items-center gap-3 px-2">
+                  <div className="flex items-center gap-2 flex-1 bg-destructive/10 rounded-xl px-4 py-3">
+                    <div className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
+                    <span className="text-sm font-medium text-destructive">Recording</span>
+                    <span className="text-sm text-muted-foreground">{formatDuration(recordingDuration)}</span>
+                  </div>
+                  <Button 
+                    size="icon" 
+                    variant="destructive"
+                    onClick={stopRecording}
+                    className="rounded-xl h-12 w-12 shrink-0 shadow-md"
+                    data-testid="button-stop-recording"
+                  >
+                    <Square className="w-5 h-5" />
+                  </Button>
+                </div>
               ) : (
-                <form onSubmit={handleSend} className="flex gap-2" data-testid="form-send-message">
+                <form onSubmit={handleSend} className="flex gap-2 items-center" data-testid="form-send-message">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                    data-testid="input-file"
+                  />
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-xl h-10 w-10 shrink-0 text-muted-foreground hover:text-primary"
+                        data-testid="button-attach"
+                        disabled={uploadMedia.isPending}
+                      >
+                        <Paperclip className="w-5 h-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="rounded-xl">
+                      <DropdownMenuItem onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "image/*"; fileInputRef.current.click(); } }} className="gap-2" data-testid="button-attach-image">
+                        <Image className="w-4 h-4" /> Photo
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { if (fileInputRef.current) { fileInputRef.current.accept = "video/*"; fileInputRef.current.click(); } }} className="gap-2" data-testid="button-attach-video">
+                        <Video className="w-4 h-4" /> Video
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-xl h-10 w-10 shrink-0 text-muted-foreground hover:text-primary"
+                    onClick={startRecording}
+                    data-testid="button-record-voice"
+                  >
+                    <Mic className="w-5 h-5" />
+                  </Button>
                   <Input 
                     value={content} 
                     onChange={e => setContent(e.target.value)} 

@@ -1,0 +1,274 @@
+Overview
+
+The Goals tab is where individuals and families set intentions, track progress, and build momentum over time.
+
+Goals are not pre-made by the app.
+The app offers examples for quick setup, but the goal types are created by the owner/household to match the family’s real life.
+
+Goals support:
+	•	Short-term wins
+	•	Long-term milestones
+	•	Shared family objectives
+	•	Personal self-improvement
+	•	Money-linked saving goals
+	•	Habit consistency tracking
+
+The Goals tab is designed to feel motivating but never pushy.
+
+⸻
+
+Core Structure
+
+1. Goal Categories (User-Created)
+
+The owner can create custom goal categories, such as:
+	•	Health
+	•	Education
+	•	Family
+	•	Finance
+	•	Home improvement
+	•	Personal development
+	•	Relationship
+	•	Spiritual / mental wellness (optional)
+
+During onboarding, the app can suggest common categories as “starter packs” that the user can accept, edit, or delete.
+
+Users are never forced into a preset system.
+
+⸻
+
+2. Goal Types
+
+A) Short-Term Goals
+
+Designed for:
+	•	1 day to 8 weeks
+	•	Clear “finish line”
+	•	Fast motivation
+
+Examples:
+	•	“Finish school supply list”
+	•	“Clean garage by Saturday”
+	•	“Save $100 this month”
+	•	“Work out 3 times this week”
+
+Short-term goals emphasize completion and momentum.
+
+⸻
+
+B) Long-Term Goals
+
+Designed for:
+	•	2 months to multi-year
+	•	Big milestones
+	•	Gradual progress
+
+Examples:
+	•	“Save for a couch”
+	•	“Family vacation next year”
+	•	“Pay off credit card”
+	•	“Improve grades this semester”
+	•	“Build emergency fund”
+
+Long-term goals emphasize consistency and measurable progress.
+
+⸻
+
+3. Goal Ownership & Visibility
+
+Each goal can be:
+	•	Personal (visible only to creator)
+	•	Shared (visible to selected family members)
+	•	Family goal (visible to all members)
+
+Teens can keep goals private unless they choose to share.
+
+Children (12 and under) have visibility controlled by the owner.
+
+Outside families cannot see goals. No cross-family goal visibility.
+
+⸻
+
+Progress Tracking
+
+4. Progress Methods (Selectable per Goal)
+
+Each goal can use one of these progress formats:
+
+A) Checklist Progress
+
+Best for:
+	•	Shopping goals
+	•	Projects
+	•	School preparation
+
+Example:
+	•	✅ Buy notebooks
+	•	✅ Get pencils
+	•	⬜ Get glue
+
+⸻
+
+B) Numeric Progress
+
+Best for:
+	•	Savings
+	•	Weight
+	•	Reading pages
+	•	Homework count
+
+Example:
+	•	“Save $1500” → $350 / $1500
+
+⸻
+
+C) Streak / Consistency Progress
+
+Best for habits:
+	•	Workouts
+	•	Chores
+	•	Studying
+	•	Routine behaviors
+
+Tracks:
+	•	Days completed
+	•	Missed days
+	•	Best streak
+	•	Weekly consistency
+
+Rewards consistency (lightly), without addictive pressure.
+
+⸻
+
+D) Milestone Progress
+
+Best for long-term plans:
+	•	“Vacation planning”
+	•	“Home renovation”
+	•	“Semester grades”
+
+Milestones can be added by the user.
+
+Example:
+	•	Research options ✅
+	•	Book hotel ⬜
+	•	Set budget ⬜
+
+⸻
+
+5. Progress Visualization
+
+Goals show progress through:
+	•	Progress bar
+	•	Percent complete (optional)
+	•	Weekly summary indicator
+	•	Monthly improvement snapshot
+	•	“Momentum” indicator (soft motivational feedback)
+
+The tone is encouraging, never shaming.
+
+⸻
+
+Money-Linked Goals (Important)
+
+6. Savings Goals Integration
+
+Long-term goals can be linked to money:
+
+Example:
+“Couch Fund – $1500”
+	•	Current saved: $350
+	•	Family contributions allowed
+	•	Tracks contributions over time
+	•	Shows how much remains
+
+This ties into Money tab charts and spending awareness.
+
+⸻
+
+Routine / Care Logs Integration (Optional)
+
+7. Goals Can Tie Into Routines
+
+Goals can optionally connect to:
+	•	Workout routine tracker
+	•	Chore reminders
+	•	Baby/special needs care logs (feeding/diaper tracking)
+
+Example:
+“Baby feeding consistency”
+	•	Logs tied to care chart
+
+⸻
+
+Goal Creation Flow (UX)
+
+8. Creating a Goal
+
+When user taps “New Goal”:
+
+They choose:
+	1.	Goal name
+	2.	Short-term or long-term
+	3.	Category (existing or new)
+	4.	Visibility (personal vs shared)
+	5.	Progress type (checklist / numeric / streak / milestone)
+	6.	Optional due date
+	7.	Optional reminders (gentle)
+
+Then it appears on the Goals dashboard.
+
+⸻
+
+Goals Dashboard
+
+9. Dashboard Views
+
+Goals tab includes:
+	•	“Active Goals” (default)
+	•	“Shared Goals”
+	•	“Completed Goals”
+	•	“Archived Goals”
+	•	Sorting options:
+	•	Due soon
+	•	Most progressed
+	•	Least progressed
+	•	Recently updated
+
+Optional quick filter:
+	•	Short-term only
+	•	Long-term only
+
+⸻
+
+Retention Features (Long-Term Stickiness)
+
+10. Goal Snapshots
+
+The app can generate:
+	•	Weekly goal progress snapshot
+	•	Monthly “wins” summary
+	•	Yearly goals reflection (completed vs archived)
+
+This supports long-term retention and life-change messaging.
+
+⸻
+
+Permissions Summary
+	•	Owner can set visibility defaults for minors
+	•	Adults always have private goal option
+	•	Teens (15–17) have autonomy
+	•	No one outside the family can access goals
+
+⸻
+
+Emotional Purpose
+
+The Goals tab should help families:
+	•	Communicate what matters
+	•	Build wealth and savings
+	•	Stay aligned without nagging
+	•	Celebrate progress
+	•	Create shared meaning
+
+This is where “this app changed our lives” becomes real.

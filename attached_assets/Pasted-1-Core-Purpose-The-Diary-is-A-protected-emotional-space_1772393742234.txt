@@ -1,0 +1,312 @@
+1. Core Purpose
+
+The Diary is:
+	•	A protected emotional space
+	•	A self-reflection tool
+	•	A growth tracker
+	•	A long-term memory archive
+	•	A teen-to-adult transition tool
+
+It is not a parental monitoring feature.
+It is not a hidden surveillance space.
+
+The diary exists for the individual first.
+
+⸻
+
+2. Who Can Use the Diary
+
+12 & Under
+	•	Diary allowed
+	•	Controlled under parent account
+	•	Parent cannot automatically read entries
+	•	Entry-level sharing must be approved per entry
+
+13–14
+	•	Diary fully enabled
+	•	Optional email integration (owner approval required)
+	•	Parent may request access to specific entries
+	•	Teen must approve per entry
+
+15–17
+	•	Diary treated almost like adult
+	•	Parent cannot force access
+	•	Parent may request access
+	•	Teen must grant access
+	•	Entry-by-entry permission only
+
+18+
+	•	Fully private
+	•	No one can request access
+	•	No override by owner
+
+⸻
+
+3. Security & Access Protection
+
+The Diary is the most secured feature in the app.
+
+Security Layers
+	1.	App-level login
+	2.	Diary lock (separate from app)
+	3.	Biometric unlock (Face ID / Touch ID)
+	4.	Optional PIN (if biometrics unavailable)
+
+Two-step verification model:
+	•	Biometric + app login
+OR
+	•	PIN + app login
+
+No background access allowed.
+No preview text shown in notifications.
+
+⸻
+
+4. Entry-Level Privacy Control
+
+Each diary entry can be:
+	•	Private (default)
+	•	Shared with owner
+	•	Shared with specific person
+	•	Shared temporarily
+	•	Revoked at any time
+
+If sharing is enabled:
+	•	User chooses specific entries
+	•	Not entire diary
+	•	No bulk unlock option
+
+When user opens diary to write:
+If sharing enabled:
+	•	Small reminder appears:
+“This entry is currently private.”
+OR
+“You are sharing selected entries.”
+
+No silent visibility.
+
+⸻
+
+5. Owner Access Rules
+
+Owner:
+
+Cannot:
+	•	Automatically access diary
+	•	See metadata of private entries
+	•	See timestamps of private entries
+	•	See number of entries written
+
+Can:
+	•	Send request for specific entry
+	•	Receive shared entry only after consent
+
+No hidden tracking.
+
+⸻
+
+6. Diary Features
+
+A. Entry Creation
+
+Each entry includes:
+	•	Title (optional)
+	•	Body text
+	•	Mood selector
+	•	Tags
+	•	Date/time auto stamped
+	•	Optional photos (private)
+	•	Optional voice notes (future phase)
+
+⸻
+
+B. Mood Tracking
+
+Optional mood selection:
+
+Examples:
+	•	Calm
+	•	Stressed
+	•	Excited
+	•	Overwhelmed
+	•	Motivated
+	•	Sad
+	•	Grateful
+
+Over time, user can see:
+	•	Mood trends
+	•	Emotional cycles
+	•	Growth patterns
+
+This is private by default.
+
+⸻
+
+C. Tag System
+
+Users can tag entries:
+
+Examples:
+	•	School
+	•	Relationship
+	•	Family
+	•	Work
+	•	Goals
+	•	Health
+
+Helps with search and reflection.
+
+⸻
+
+D. Timeline View
+
+Diary can be viewed in:
+	•	Chronological list
+	•	Monthly mood map (future phase)
+	•	Yearly reflection view
+	•	Filter by tag
+
+⸻
+
+E. Annual Reflection
+
+After 1 year:
+
+User can see:
+	•	Mood distribution
+	•	Entry count
+	•	Common themes
+	•	Emotional growth timeline
+
+This supports long-term retention.
+
+⸻
+
+7. Sharing Mechanism
+
+If user chooses to share:
+	•	They select specific entry
+	•	They choose:
+	•	Share once
+	•	Share permanently
+	•	Share for limited time
+	•	They can revoke at any time
+
+If revoked:
+	•	Access removed immediately
+	•	No archive retained by viewer
+
+No screenshot detection built-in (future consideration).
+
+⸻
+
+8. Abuse & Safety Option
+
+Inside diary settings:
+
+User can:
+	•	Flag emotional distress
+	•	Request help
+	•	Contact owner (optional)
+	•	Access crisis resources (future phase)
+
+No automatic alert unless user enables it.
+
+⸻
+
+9. Data Storage & Retention
+
+If user deletes diary entry:
+	•	Soft delete for 30 days
+	•	Then permanently removed
+
+If account canceled:
+	•	Diary retained 1 year
+	•	Fully deleted after 1 year
+	•	No partial retention
+
+If minor account deleted:
+	•	Diary retained under parent subscription
+	•	Re-add possible within 1 year
+
+⸻
+
+10. Notification Rules
+
+Diary never:
+	•	Sends reminders to write
+	•	Sends streak-based dopamine manipulation
+	•	Sends guilt notifications
+
+Optional:
+	•	Gentle weekly reflection prompt (user enabled only)
+
+Example:
+“Would you like to reflect on this week?”
+
+No pressure tactics.
+
+⸻
+
+11. Design Tone
+
+Diary UI should feel:
+	•	Calm
+	•	Soft
+	•	Clean
+	•	Private
+	•	Focused
+
+Not:
+	•	Gamified
+	•	Overstimulating
+	•	Flashy
+	•	Social-media-like
+
+Animations:
+	•	Optional
+	•	Turn off in settings
+
+⸻
+
+12. Why This Matters
+
+The diary:
+	•	Builds trust with teens
+	•	Encourages emotional literacy
+	•	Helps parents understand (when shared)
+	•	Creates lifelong archive
+	•	Becomes a deeply sticky feature
+
+If removed, users would feel emotionally disconnected from their growth history.
+
+This is a retention anchor.
+
+⸻
+
+13. Legal Protection Clause
+
+Terms must state:
+	•	App not responsible for age misrepresentation
+	•	Owner responsible for minor supervision
+	•	Diary sharing is user-controlled
+	•	No guarantee against screenshots
+	•	Users responsible for shared content
+
+⸻
+
+14. Summary
+
+Diary is:
+	•	Private by default
+	•	Consent-based
+	•	Biometrically protected
+	•	Entry-level controlled
+	•	Emotionally supportive
+	•	Non-addictive
+	•	Owner-limited
+	•	Legally structured
+	•	Growth-oriented
+
+This is not a note pad.
+It is a protected reflection system.

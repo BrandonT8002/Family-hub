@@ -31,13 +31,25 @@ export function useConversationMessages(conversationId: number | null) {
 export function useSendMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ conversationId, content }: { conversationId: number; content: string }) => {
-      const res = await apiRequest("POST", `/api/conversations/${conversationId}/messages`, { content });
+    mutationFn: async ({ conversationId, content, messageType, mediaUrl, mediaDuration }: { conversationId: number; content: string; messageType?: string; mediaUrl?: string; mediaDuration?: number }) => {
+      const res = await apiRequest("POST", `/api/conversations/${conversationId}/messages`, { content, messageType, mediaUrl, mediaDuration });
       return res.json();
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', variables.conversationId, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+    },
+  });
+}
+
+export function useUploadMedia() {
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData, credentials: "include" });
+      if (!res.ok) throw new Error("Upload failed");
+      return res.json();
     },
   });
 }

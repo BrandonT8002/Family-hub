@@ -151,8 +151,20 @@ export class DatabaseStorage implements IStorage {
     return updated;
   }
 
-  async getGroceryLists(familyId: number) {
-    return await db.select().from(groceryLists).where(eq(groceryLists.familyId, familyId));
+  async getGroceryLists(familyId: number, userId?: string) {
+    const allLists = await db.select().from(groceryLists).where(eq(groceryLists.familyId, familyId));
+    if (!userId) return allLists;
+    return allLists.filter(list => !list.isPrivate || list.creatorId === userId);
+  }
+
+  async getGroceryList(id: number) {
+    const [list] = await db.select().from(groceryLists).where(eq(groceryLists.id, id));
+    return list || null;
+  }
+
+  async updateGroceryList(id: number, data: Partial<typeof groceryLists.$inferSelect>) {
+    const [updated] = await db.update(groceryLists).set(data).where(eq(groceryLists.id, id)).returning();
+    return updated;
   }
 
   async createGroceryList(list: InsertGroceryList) {
@@ -300,6 +312,9 @@ export class DatabaseStorage implements IStorage {
       familyId: chatMessages.familyId,
       senderId: chatMessages.senderId,
       content: chatMessages.content,
+      messageType: chatMessages.messageType,
+      mediaUrl: chatMessages.mediaUrl,
+      mediaDuration: chatMessages.mediaDuration,
       isDeleted: chatMessages.isDeleted,
       createdAt: chatMessages.createdAt,
       user: {
