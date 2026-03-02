@@ -60,6 +60,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
@@ -542,6 +543,9 @@ export default function Chat() {
                         {isMyPending(convo) && (
                           <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium">Pending</span>
                         )}
+                        {convo.mutedUntil && new Date(convo.mutedUntil) > new Date() && (
+                          <BellOff className="w-3 h-3 text-muted-foreground/50 shrink-0" data-testid={`icon-muted-${convo.id}`} />
+                        )}
                         {convo.type === "dm" && (
                           <Lock className="w-3 h-3 text-muted-foreground/50 shrink-0" />
                         )}
@@ -610,33 +614,59 @@ export default function Chat() {
                 </p>
               </div>
 
-              {activeConvo.type === "dm" && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="rounded-xl" data-testid="button-convo-menu">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="rounded-xl">
-                    {(() => {
-                      const otherId = getOtherUserId(activeConvo);
-                      if (!otherId) return null;
-                      if (isBlockedUser(otherId)) {
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="rounded-xl" data-testid="button-convo-menu">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="rounded-xl">
+                  {activeConvo.mutedUntil && new Date(activeConvo.mutedUntil) > new Date() ? (
+                    <DropdownMenuItem onClick={() => activeConvoId && unmuteConvo.mutate(activeConvoId)} className="gap-2" data-testid="button-unmute">
+                      <Bell className="w-4 h-4" /> Unmute
+                    </DropdownMenuItem>
+                  ) : (
+                    <>
+                      <DropdownMenuItem onClick={() => activeConvoId && muteConvo.mutate({ id: activeConvoId, duration: "1h" })} className="gap-2" data-testid="button-mute-1h">
+                        <BellOff className="w-4 h-4" /> Mute 1 hour
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => activeConvoId && muteConvo.mutate({ id: activeConvoId, duration: "8h" })} className="gap-2" data-testid="button-mute-8h">
+                        <BellOff className="w-4 h-4" /> Mute 8 hours
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => activeConvoId && muteConvo.mutate({ id: activeConvoId, duration: "24h" })} className="gap-2" data-testid="button-mute-24h">
+                        <BellOff className="w-4 h-4" /> Mute 24 hours
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => activeConvoId && muteConvo.mutate({ id: activeConvoId, duration: "7d" })} className="gap-2" data-testid="button-mute-7d">
+                        <BellOff className="w-4 h-4" /> Mute 1 week
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => activeConvoId && muteConvo.mutate({ id: activeConvoId, duration: "indefinite" })} className="gap-2" data-testid="button-mute-indefinite">
+                        <BellOff className="w-4 h-4" /> Mute indefinitely
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {activeConvo.type === "dm" && (
+                    <>
+                      <DropdownMenuSeparator />
+                      {(() => {
+                        const otherId = getOtherUserId(activeConvo);
+                        if (!otherId) return null;
+                        if (isBlockedUser(otherId)) {
+                          return (
+                            <DropdownMenuItem onClick={() => handleUnblock(otherId)} className="gap-2" data-testid="button-unblock">
+                              <ShieldOff className="w-4 h-4" /> Unblock User
+                            </DropdownMenuItem>
+                          );
+                        }
                         return (
-                          <DropdownMenuItem onClick={() => handleUnblock(otherId)} className="gap-2" data-testid="button-unblock">
-                            <ShieldOff className="w-4 h-4" /> Unblock User
+                          <DropdownMenuItem onClick={() => handleBlock(otherId)} className="gap-2 text-destructive" data-testid="button-block">
+                            <Shield className="w-4 h-4" /> Block User
                           </DropdownMenuItem>
                         );
-                      }
-                      return (
-                        <DropdownMenuItem onClick={() => handleBlock(otherId)} className="gap-2 text-destructive" data-testid="button-block">
-                          <Shield className="w-4 h-4" /> Block User
-                        </DropdownMenuItem>
-                      );
-                    })()}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+                      })()}
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
 
             {/* Privacy Notice */}
