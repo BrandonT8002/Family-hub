@@ -500,6 +500,19 @@ export async function registerRoutes(
     res.json(convs);
   });
 
+  app.get('/api/conversations/unread-count', isAuthenticated, requireFamily, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const totalUnread = await storage.getUnreadCount(req.family.id, userId);
+    res.json({ totalUnread });
+  });
+
+  app.post('/api/conversations/:id/read', isAuthenticated, requireFamily, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const conversationId = parseInt(req.params.id);
+    await storage.markConversationRead(conversationId, userId);
+    res.json({ success: true });
+  });
+
   app.post(api.conversations.createDM.path, isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const input = api.conversations.createDM.input.parse(req.body);

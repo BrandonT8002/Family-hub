@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useFamily } from "@/hooks/use-family";
 import { useCaregiverMode } from "./layout";
+import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +83,12 @@ export function BottomNav() {
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: unreadData } = useQuery<{ totalUnread: number }>({
+    queryKey: ['/api/conversations/unread-count'],
+    refetchInterval: 10000,
+    enabled: !!user && !!family,
+  });
 
   const handleScroll = useCallback(() => {
     const mainEl = document.getElementById("main-scroll-area");
@@ -258,7 +265,17 @@ export function BottomNav() {
                         transition={{ type: "spring", damping: 25, stiffness: 300 }}
                       />
                     )}
-                    <item.icon className={`w-5 h-5 relative z-10 ${active ? "stroke-[2.5]" : ""}`} />
+                    <div className="relative">
+                      <item.icon className={`w-5 h-5 relative z-10 ${active ? "stroke-[2.5]" : ""}`} />
+                      {item.title === "Chat" && (unreadData?.totalUnread ?? 0) > 0 && (
+                        <span
+                          className="absolute -top-1.5 -right-2.5 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1 z-20"
+                          data-testid="badge-chat-unread"
+                        >
+                          {unreadData!.totalUnread > 99 ? "99+" : unreadData!.totalUnread}
+                        </span>
+                      )}
+                    </div>
                     <span className={`text-[10px] relative z-10 leading-none ${active ? "font-bold" : "font-medium"}`}>
                       {item.title}
                     </span>

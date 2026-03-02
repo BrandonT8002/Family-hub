@@ -111,6 +111,17 @@ export default function Chat() {
     }
   }, [convos, activeConvoId]);
 
+  useEffect(() => {
+    if (!activeConvoId || !convos) return;
+    const convo = convos.find((c: any) => c.id === activeConvoId);
+    if (convo && convo.unreadCount > 0) {
+      apiRequest("POST", `/api/conversations/${activeConvoId}/read`).then(() => {
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations/unread-count'] });
+      });
+    }
+  }, [activeConvoId, convos]);
+
   const activeConvo = convos?.find((c: any) => c.id === activeConvoId);
 
   const handleSend = (e: React.FormEvent) => {
@@ -515,7 +526,16 @@ export default function Chat() {
                 return (
                   <button
                     key={convo.id}
-                    onClick={() => { setActiveConvoId(convo.id); setMobileShowMessages(true); }}
+                    onClick={() => { 
+                      setActiveConvoId(convo.id); 
+                      setMobileShowMessages(true);
+                      if (convo.unreadCount > 0) {
+                        apiRequest("POST", `/api/conversations/${convo.id}/read`).then(() => {
+                          queryClient.invalidateQueries({ queryKey: ['/api/conversations'] });
+                          queryClient.invalidateQueries({ queryKey: ['/api/conversations/unread-count'] });
+                        });
+                      }
+                    }}
                     className={`flex items-center gap-3 w-full p-3 rounded-xl mb-1 transition-all text-left ${
                       isActive ? 'bg-primary/10 border border-primary/20' : 'hover:bg-muted/50'
                     }`}
@@ -537,7 +557,7 @@ export default function Chat() {
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <p className={`font-medium text-sm truncate ${isActive ? 'text-primary' : ''}`}>
+                        <p className={`text-sm truncate ${isActive ? 'text-primary font-medium' : convo.unreadCount > 0 ? 'font-bold' : 'font-medium'}`}>
                           {getConvoName(convo)}
                         </p>
                         {isMyPending(convo) && (
@@ -556,11 +576,21 @@ export default function Chat() {
                         </p>
                       )}
                     </div>
-                    {convo.lastMessage?.createdAt && (
-                      <span className="text-[10px] text-muted-foreground/60 shrink-0">
-                        {format(new Date(convo.lastMessage.createdAt), 'h:mm a')}
-                      </span>
-                    )}
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      {convo.lastMessage?.createdAt && (
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {format(new Date(convo.lastMessage.createdAt), 'h:mm a')}
+                        </span>
+                      )}
+                      {convo.unreadCount > 0 && !isActive && (
+                        <span 
+                          className="min-w-[20px] h-[20px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1"
+                          data-testid={`badge-unread-${convo.id}`}
+                        >
+                          {convo.unreadCount > 99 ? "99+" : convo.unreadCount}
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })

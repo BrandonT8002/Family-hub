@@ -209,6 +209,7 @@ export const conversationParticipants = pgTable("conversation_participants", {
   conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
   userId: text("user_id").references(() => users.id).notNull(),
   mutedUntil: timestamp("muted_until"),
+  lastReadAt: timestamp("last_read_at"),
   joinedAt: timestamp("joined_at").defaultNow(),
 });
 

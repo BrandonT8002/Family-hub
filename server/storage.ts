@@ -9,7 +9,7 @@ import {
   type Caregiver, type CareNote, type FamilyInvite,
   type FamilyConnection, type AcademicClass, type AcademicEntry, type Workout, type Snapshot
 } from "@shared/schema";
-import { eq, desc, and, or, ne, inArray, isNull, asc } from "drizzle-orm";
+import { eq, desc, and, or, ne, inArray, isNull, asc, sql } from "drizzle-orm";
 
 export interface IStorage {
   getFamilyForUser(userId: string): Promise<typeof families.$inferSelect | null>;
@@ -44,6 +44,8 @@ export interface IStorage {
   deleteGroceryItem(id: number): Promise<void>;
 
   getConversationsForUser(familyId: number, userId: string): Promise<any[]>;
+  markConversationRead(conversationId: number, userId: string): Promise<void>;
+  getUnreadCount(familyId: number, userId: string): Promise<number>;
   getOrCreateGroupConversation(familyId: number): Promise<typeof conversations.$inferSelect>;
   createDMConversation(familyId: number, creatorId: string, recipientId: string): Promise<typeof conversations.$inferSelect>;
   getConversation(id: number): Promise<typeof conversations.$inferSelect | null>;
@@ -351,14 +353,74 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(chatMessages.createdAt))
       .limit(1);
 
+      const participantRecord = row.conversation_participants;
+      let unreadCount = 0;
+      const unreadConditions = [
+        eq(chatMessages.conversationId, conv.id),
+        eq(chatMessages.isDeleted, false),
+        sql`${chatMessages.senderId} != ${userId}`,
+      ];
+      if (participantRecord.lastReadAt) {
+        unreadConditions.push(sql`${chatMessages.createdAt} > ${participantRecord.lastReadAt}`);
+      }
+      const [unreadResult] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(chatMessages)
+        .where(and(...unreadConditions));
+      unreadCount = unreadResult?.count || 0;
+
       result.push({
         ...conv,
         participants,
         lastMessage: lastMsg[0] || null,
+        mutedUntil: participantRecord.mutedUntil,
+        unreadCount,
       });
     }
 
     return result;
+  }
+
+  async markConversationRead(conversationId: number, userId: string) {
+    await db.update(conversationParticipants)
+      .set({ lastReadAt: new Date() })
+      .where(
+        and(
+          eq(conversationParticipants.conversationId, conversationId),
+          eq(conversationParticipants.userId, userId)
+        )
+      );
+  }
+
+  async getUnreadCount(familyId: number, userId: string) {
+    const participantRows = await db.select({
+      conversationId: conversationParticipants.conversationId,
+      lastReadAt: conversationParticipants.lastReadAt,
+    })
+      .from(conversationParticipants)
+      .innerJoin(conversations, eq(conversationParticipants.conversationId, conversations.id))
+      .where(
+        and(
+          eq(conversationParticipants.userId, userId),
+          eq(conversations.familyId, familyId)
+        )
+      );
+
+    let total = 0;
+    for (const row of participantRows) {
+      const conditions = [
+        eq(chatMessages.conversationId, row.conversationId),
+        eq(chatMessages.isDeleted, false),
+        sql`${chatMessages.senderId} != ${userId}`,
+      ];
+      if (row.lastReadAt) {
+        conditions.push(sql`${chatMessages.createdAt} > ${row.lastReadAt}`);
+      }
+      const [result] = await db.select({ count: sql<number>`count(*)::int` })
+        .from(chatMessages)
+        .where(and(...conditions));
+      total += result?.count || 0;
+    }
+    return total;
   }
 
   async createDMConversation(familyId: number, creatorId: string, recipientId: string) {

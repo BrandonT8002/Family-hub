@@ -4,6 +4,7 @@ import { useFamily } from "@/hooks/use-family";
 import { useExpenses, useFinancialSchedule, useSavingsGoals } from "@/hooks/use-expenses";
 import { useEvents } from "@/hooks/use-events";
 import { useLeaveTimeToday, useSaveLeaveTimeOverride } from "@/hooks/use-leave-time";
+import { useQuery } from "@tanstack/react-query";
 import { format, isSameDay, startOfMonth, endOfMonth, isAfter, isBefore, addDays } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -53,6 +54,11 @@ export default function Dashboard() {
   const { data: leaveTimeData } = useLeaveTimeToday();
   const saveOverride = useSaveLeaveTimeOverride();
   const { toast } = useToast();
+  const { data: unreadData } = useQuery<{ totalUnread: number }>({
+    queryKey: ['/api/conversations/unread-count'],
+    refetchInterval: 15000,
+    enabled: !!user && !!family,
+  });
 
   const today = new Date();
   const greeting = getGreeting();
@@ -309,8 +315,13 @@ export default function Dashboard() {
                 className="flex flex-col items-center gap-1.5 cursor-pointer"
                 data-testid={`quick-action-${item.title.toLowerCase()}`}
               >
-                <div className={`w-14 h-14 rounded-2xl ${item.bg} flex items-center justify-center shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5`}>
+                <div className={`relative w-14 h-14 rounded-2xl ${item.bg} flex items-center justify-center shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5`}>
                   <item.icon className={`w-6 h-6 ${item.color}`} />
+                  {item.title === "Chat" && (unreadData?.totalUnread ?? 0) > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-bold px-1" data-testid="dashboard-chat-unread">
+                      {unreadData!.totalUnread > 99 ? "99+" : unreadData!.totalUnread}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[11px] font-semibold text-muted-foreground">{item.title}</span>
               </motion.div>
