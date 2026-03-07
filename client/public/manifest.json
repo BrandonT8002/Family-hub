@@ -1,6 +1,6 @@
 {
-  "name": "FamilyHub",
-  "short_name": "FamilyHub",
+  "name": "Family Hub",
+  "short_name": "Family Hub",
   "description": "Premium family productivity app — schedule, budgets, shopping, chat, goals and more.",
   "start_url": "/",
   "display": "standalone",

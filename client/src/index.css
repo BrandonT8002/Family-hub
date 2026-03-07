@@ -133,8 +133,29 @@
     @apply translate-y-0 shadow-md;
   }
   
-  /* Glass effect for premium feel */
   .glass {
     @apply bg-background/80 backdrop-blur-xl border border-border/50;
   }
+}
+
+:root {
+  --sat: env(safe-area-inset-top);
+  --sab: env(safe-area-inset-bottom);
+  --sal: env(safe-area-inset-left);
+  --sar: env(safe-area-inset-right);
+}
+
+body.capacitor {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+
+body.capacitor input,
+body.capacitor textarea,
+body.capacitor [contenteditable] {
+  -webkit-user-select: text;
+  user-select: text;
 }

@@ -155,7 +155,8 @@ export function BottomNav() {
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 28, stiffness: 300 }}
-            className="fixed bottom-0 left-0 right-0 z-50 px-4 pb-4"
+            className="fixed bottom-0 left-0 right-0 z-50 px-4"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
           >
             <div className="bg-white/95 backdrop-blur-2xl rounded-[2rem] shadow-2xl border border-white/60 overflow-hidden max-w-lg mx-auto max-h-[calc(100vh-100px)] overflow-y-auto">
               <div className="flex justify-center pt-3 pb-1">
@@ -246,7 +247,8 @@ export function BottomNav() {
       <motion.div
         animate={{ y: visible ? 0 : 100 }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-30 px-4 pb-4 pointer-events-none"
+        className="fixed bottom-0 left-0 right-0 z-30 px-4 pointer-events-none"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
       >
         <nav
           className="max-w-md mx-auto pointer-events-auto"

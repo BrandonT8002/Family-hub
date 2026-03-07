@@ -30,6 +30,9 @@ client/public/
   sw.js         - Service worker
   icon-192.png  - App icon 192x192
   icon-512.png  - App icon 512x512
+ios/              - Capacitor iOS project (open in Xcode)
+capacitor.config.ts - Capacitor configuration
+APP_STORE_GUIDE.md  - Step-by-step App Store submission guide
 ```
 
 ## Navigation
@@ -84,6 +87,7 @@ client/public/
 - **Settings**: 8-section hub (Appearance, Personalize, Family, Permissions, Connections, Chat & Privacy, Caregivers, Account)
   - **Personalize**: Dashboard widget toggles/reorder + navigation menu item toggles/reorder
 - **PWA**: Installable on mobile with manifest.json and service worker
+- **iOS Native (Capacitor)**: Wrapped for App Store submission with safe areas, haptics, status bar, keyboard handling
 
 ## Privacy Architecture
 - Role-based: Owner, Adult, Teen, Youth, Child, Caregiver

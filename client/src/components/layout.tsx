@@ -101,7 +101,7 @@ export function Layout({ children }: { children: ReactNode }) {
         className="min-h-screen w-full transition-colors duration-500 text-foreground flex flex-col"
         style={getStyle()}
       >
-        <header className="flex items-center justify-between px-5 pt-4 pb-2 shrink-0">
+        <header className="flex items-center justify-between px-5 pb-2 shrink-0" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 bg-white/60 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-sm text-primary font-black text-sm">
               {family.name?.[0] || "F"}
