@@ -1,0 +1,10 @@
+node_modules
+ios
+.git
+.gitignore
+.replit
+replit.nix
+*.md
+.local
+uploads
+dist

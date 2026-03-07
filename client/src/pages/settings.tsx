@@ -1168,7 +1168,7 @@ function CaregiversSection({ familyId }: { familyId: number }) {
             <div className="space-y-4 p-4 bg-teal-50/50 rounded-2xl border border-teal-100">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-600">Replit User ID</label>
+                  <label className="text-xs font-bold text-slate-600">User ID</label>
                   <Input placeholder="e.g. 12345678" value={cgUserId} onChange={(e) => setCgUserId(e.target.value)} className="rounded-xl h-9" data-testid="input-caregiver-userid" />
                 </div>
                 <div className="space-y-1">

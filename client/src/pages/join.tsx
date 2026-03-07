@@ -139,9 +139,9 @@ export default function JoinFamily() {
           <CardContent className="p-6 space-y-5">
             {!isAuthenticated ? (
               <div className="space-y-4 text-center">
-                <p className="text-muted-foreground font-medium">Sign in with Replit to continue</p>
-                <Button onClick={() => login(`/join/${token}`)} className="w-full h-12 rounded-2xl font-bold text-base shadow-lg" data-testid="button-login-to-join">
-                  Sign in to join
+                <p className="text-muted-foreground font-medium">Sign in or create an account first, then come back to this link to join.</p>
+                <Button onClick={() => window.location.href = "/"} className="w-full h-12 rounded-2xl font-bold text-base shadow-lg" data-testid="button-login-to-join">
+                  Go to Sign In
                 </Button>
               </div>
             ) : (

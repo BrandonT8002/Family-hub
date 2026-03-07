@@ -6,8 +6,9 @@ A premium family productivity "operating system" web app.
 - **Frontend**: React, TypeScript, Vite, Tailwind CSS, shadcn/ui, wouter (routing), TanStack Query
 - **Backend**: Express.js, TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
-- **Auth**: Replit Auth (OIDC)
+- **Auth**: Email/password with bcrypt hashing, express-session (connect-pg-simple)
 - **PWA**: manifest.json, service worker (sw.js), app icons for mobile install
+- **Deployment**: Dockerfile + docker-compose.yml for portable hosting (Railway, Fly.io, VPS)
 
 ## Project Structure
 ```
@@ -15,12 +16,13 @@ client/src/
   pages/        - Dashboard, Schedule, Money, Groceries, GroceryListDetail, Chat, Diary, Goals, Wishlists, LeaveTime, Settings (8-section hub), CaregiverDashboard, CareNotes, Academics, Workouts, Connections, Snapshots, Members
   components/   - Layout, BottomNav, UI components (shadcn)
   hooks/        - use-auth, use-family, use-chat, use-expenses, use-diary, use-goals, use-wishlists, use-leave-time, use-caregivers, use-preferences, use-groceries
-  lib/          - queryClient
+  lib/          - queryClient, auth-utils
 shared/
   schema.ts     - Drizzle schema (all tables)
   routes.ts     - API route definitions with Zod validation
-  models/auth.ts - User/session models
+  models/auth.ts - User/session models (password field for email/password auth)
 server/
+  auth.ts       - Email/password auth (bcrypt, session-based login/register/logout)
   routes.ts     - Express route handlers
   storage.ts    - DatabaseStorage class (all CRUD)
   db.ts         - Database connection
@@ -32,8 +34,20 @@ client/public/
   icon-512.png  - App icon 512x512
 ios/              - Capacitor iOS project (open in Xcode)
 capacitor.config.ts - Capacitor configuration
-APP_STORE_GUIDE.md  - Step-by-step App Store submission guide
+APP_STORE_GUIDE.md  - Deployment + App Store submission guide
+Dockerfile          - Multi-stage Docker build
+docker-compose.yml  - App + PostgreSQL for self-hosting
 ```
+
+## Auth System
+- **Registration**: POST /api/auth/register (email, password, firstName, lastName)
+- **Login**: POST /api/auth/login (email, password)
+- **Logout**: POST /api/auth/logout
+- **Current user**: GET /api/auth/user
+- Passwords hashed with bcrypt (12 rounds)
+- Sessions stored in PostgreSQL via connect-pg-simple
+- `req.session.userId` is the user identifier in all route handlers
+- `isAuthenticated` middleware checks for valid session
 
 ## Navigation
 - **Bottom Nav Bar** (replaced sidebar): Floating pill at screen bottom, frosted glass, auto-hides on scroll down, reappears on scroll up
@@ -44,7 +58,7 @@ APP_STORE_GUIDE.md  - Step-by-step App Store submission guide
   - All screens use bottom padding (pb-32) to account for nav height
 
 ## Database Tables
-- **users** - Replit Auth users
+- **users** - Email/password authenticated users (id varchar, email, password hash, firstName, lastName, profileImageUrl)
 - **families** - Family groups with tier (core/plus/extended), theme/font config
 - **family_members** - Join table (userId, familyId, role, displayName, dateOfBirth)
 - **events** - Calendar events (personal/shared, recurring)
@@ -109,3 +123,9 @@ APP_STORE_GUIDE.md  - Step-by-step App Store submission guide
 - `requireOwner` checks `req.family.ownerId === userId`
 - Schema push: `printf "1\n1\n1\n1\n1\n" | npx drizzle-kit push --force`
 - Chat unread route (`GET /api/conversations/unread-count`) must be before parameterized routes
+
+## Environment Variables
+- `DATABASE_URL` — PostgreSQL connection string
+- `SESSION_SECRET` — Secret for signing session cookies
+- `NODE_ENV` — `development` or `production`
+- `PORT` — Server port (default 5000)

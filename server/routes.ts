@@ -3,11 +3,11 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { db } from "./db";
 import { families, conversations, conversationParticipants } from "@shared/schema";
+import { users } from "@shared/models/auth";
 import { eq } from "drizzle-orm";
 import { api, buildUrl } from "@shared/routes";
 import { z } from "zod";
-import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
-import { authStorage } from "./replit_integrations/auth/storage";
+import { setupAuth, isAuthenticated } from "./auth";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -38,7 +38,6 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   await setupAuth(app);
-  registerAuthRoutes(app);
 
   app.use("/uploads", express.static(uploadDir));
 
@@ -57,7 +56,7 @@ export async function registerRoutes(
   });
 
   const requireFamily = async (req: any, res: any, next: any) => {
-    const userId = req.user?.claims?.sub;
+    const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     const family = await storage.getFamilyForUser(userId);
     if (family) {
@@ -77,7 +76,7 @@ export async function registerRoutes(
   };
 
   const requireOwner = async (req: any, res: any, next: any) => {
-    const userId = req.user?.claims?.sub;
+    const userId = req.session?.userId;
     if (!userId) return res.status(401).json({ message: "Unauthorized" });
     if (req.family.ownerId !== userId) return res.status(403).json({ message: "Only the family owner can do this" });
     next();
@@ -114,7 +113,7 @@ export async function registerRoutes(
   });
 
   app.get(api.family.get.path, isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     let family = await storage.getFamilyForUser(userId);
     if (family) {
       await seedMoneyData(family.id, userId);
@@ -127,7 +126,7 @@ export async function registerRoutes(
   app.post(api.family.create.path, isAuthenticated, async (req: any, res) => {
     try {
       const input = api.family.create.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const family = await storage.createFamily(input.name, userId);
       if (input.themeConfig || input.fontFamily) {
         await storage.updateFamily(family.id, { 
@@ -204,7 +203,7 @@ export async function registerRoutes(
         startTime: input.startTime ? new Date(input.startTime) : null,
         endTime: input.endTime ? new Date(input.endTime) : null,
         familyId: req.family.id,
-        creatorId: req.user.claims.sub,
+        creatorId: req.session.userId,
         recurrence: input.recurrence || "One-time",
         recurrenceDays: input.recurrenceDays || null,
         recurrenceEnd: input.recurrenceEnd ? new Date(input.recurrenceEnd) : null,
@@ -224,7 +223,7 @@ export async function registerRoutes(
   app.patch('/api/events/:id', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const event = await storage.updateEvent(id, req.family.id, userId, req.body);
       res.json(event);
     } catch (err: any) {
@@ -235,7 +234,7 @@ export async function registerRoutes(
   app.delete('/api/events/:id', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.deleteEvent(id, req.family.id, userId);
       res.json({ success: true });
     } catch (err: any) {
@@ -256,7 +255,7 @@ export async function registerRoutes(
         ...input,
         amount: input.amount.toString(),
         familyId: req.family.id,
-        creatorId: req.user.claims.sub,
+        creatorId: req.session.userId,
         date: input.date ? new Date(input.date) : new Date(),
       });
       res.status(201).json(expense);
@@ -286,7 +285,7 @@ export async function registerRoutes(
         amount: input.amount.toString(),
         dueDate: parsedDate,
         familyId: req.family.id,
-        creatorId: req.user.claims.sub,
+        creatorId: req.session.userId,
       });
       res.status(201).json(item);
     } catch (err) {
@@ -393,7 +392,7 @@ export async function registerRoutes(
 
   // Groceries
   app.get(api.groceryLists.list.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const lists = await storage.getGroceryLists(req.family.id, userId);
     res.json(lists);
   });
@@ -401,7 +400,7 @@ export async function registerRoutes(
   app.post(api.groceryLists.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.groceryLists.create.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const list = await storage.createGroceryList({
         ...input,
         familyId: req.family.id,
@@ -423,7 +422,7 @@ export async function registerRoutes(
   app.patch('/api/grocery-lists/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const id = Number(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const list = await storage.getGroceryList(id);
       if (!list) return res.status(404).json({ message: "List not found" });
       if (list.familyId !== req.family.id) return res.status(403).json({ message: "Access denied" });
@@ -439,7 +438,7 @@ export async function registerRoutes(
 
   app.get(api.groceryItems.list.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     const listId = Number(req.params.listId);
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const list = await storage.getGroceryList(listId);
     if (!list) return res.status(404).json({ message: "List not found" });
     if (list.familyId !== req.family.id) return res.status(403).json({ message: "Access denied" });
@@ -451,7 +450,7 @@ export async function registerRoutes(
   app.post(api.groceryItems.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.groceryItems.create.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const item = await storage.createGroceryItem({
         ...input,
         listId: Number(req.params.listId),
@@ -511,7 +510,7 @@ export async function registerRoutes(
 
   // Conversations
   app.get(api.conversations.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
 
     if (req.isCaregiver) {
       const perms = (req.caregiverRecord?.permissions as any) || {};
@@ -527,13 +526,13 @@ export async function registerRoutes(
   });
 
   app.get('/api/conversations/unread-count', isAuthenticated, requireFamily, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const totalUnread = await storage.getUnreadCount(req.family.id, userId);
     res.json({ totalUnread });
   });
 
   app.post('/api/conversations/:id/read', isAuthenticated, requireFamily, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const conversationId = parseInt(req.params.id);
     await storage.markConversationRead(conversationId, userId);
     res.json({ success: true });
@@ -542,7 +541,7 @@ export async function registerRoutes(
   app.post(api.conversations.createDM.path, isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const input = api.conversations.createDM.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
 
       if (req.isCaregiver) {
         const perms = (req.caregiverRecord?.permissions as any) || {};
@@ -571,7 +570,7 @@ export async function registerRoutes(
 
   const requireConversationAccess = async (req: any, res: any) => {
     const convId = Number(req.params.id);
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const conv = await storage.getConversation(convId);
     if (!conv) { res.status(404).json({ message: "Conversation not found" }); return null; }
     if (conv.familyId !== req.family.id) { res.status(403).json({ message: "Access denied" }); return null; }
@@ -602,7 +601,7 @@ export async function registerRoutes(
   app.post('/api/conversations/:id/messages', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const input = api.conversations.sendMessage.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const conv = await requireConversationAccess(req, res);
       if (!conv) return;
 
@@ -649,7 +648,7 @@ export async function registerRoutes(
 
   app.delete('/api/messages/:id', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.deleteMessage(Number(req.params.id), userId);
       res.json({ success: true });
     } catch (err) {
@@ -659,7 +658,7 @@ export async function registerRoutes(
 
   // Blocks
   app.get(api.blocks.list.path, isAuthenticated, requireFamily, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const blocksList = await storage.getBlocks(userId, req.family.id);
     res.json(blocksList);
   });
@@ -667,7 +666,7 @@ export async function registerRoutes(
   app.post(api.blocks.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const input = api.blocks.create.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const block = await storage.blockUser(userId, input.blockedId, req.family.id);
       res.status(201).json(block);
     } catch (err) {
@@ -680,7 +679,7 @@ export async function registerRoutes(
 
   app.delete('/api/blocks/:blockedId', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.unblockUser(userId, req.params.blockedId, req.family.id);
       res.json({ success: true });
     } catch (err) {
@@ -698,7 +697,7 @@ export async function registerRoutes(
   app.post(api.chat.create.path, isAuthenticated, requireFamily, async (req: any, res) => {
     try {
       const input = api.chat.create.input.parse(req.body);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       
       const groupConv = await storage.getOrCreateGroupConversation(req.family.id);
 
@@ -719,32 +718,32 @@ export async function registerRoutes(
 
   // Diary
   app.get('/api/diary', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const entries = await storage.getDiaryEntries(userId, req.family.id);
     res.json(entries);
   });
 
   app.get('/api/diary/deleted', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const entries = await storage.getDeletedDiaryEntries(userId, req.family.id);
     res.json(entries);
   });
 
   app.get('/api/diary/mood-stats', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const stats = await storage.getMoodStats(userId, req.family.id);
     res.json(stats);
   });
 
   app.get('/api/diary/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const settings = await storage.getDiarySettings(userId, req.family.id);
     res.json(settings);
   });
 
   app.patch('/api/diary/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const input = z.object({
         diaryPin: z.string().min(4).max(6).optional(),
         isLocked: z.boolean().optional(),
@@ -760,7 +759,7 @@ export async function registerRoutes(
 
   app.post('/api/diary/verify-pin', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { pin } = z.object({ pin: z.string() }).parse(req.body);
       const settings = await storage.getDiarySettings(userId, req.family.id);
       if (!settings || !settings.diaryPin) return res.json({ valid: true });
@@ -771,7 +770,7 @@ export async function registerRoutes(
   });
 
   app.get('/api/diary/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
-    const userId = req.user.claims.sub;
+    const userId = req.session.userId;
     const entry = await storage.getDiaryEntry(Number(req.params.id));
     if (!entry) return res.status(404).json({ message: "Entry not found" });
     if (entry.userId !== userId) {
@@ -784,7 +783,7 @@ export async function registerRoutes(
 
   app.post('/api/diary', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const input = z.object({
         title: z.string().optional(),
         body: z.string().min(1),
@@ -810,7 +809,7 @@ export async function registerRoutes(
 
   app.patch('/api/diary/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const entry = await storage.getDiaryEntry(Number(req.params.id));
       if (!entry) return res.status(404).json({ message: "Entry not found" });
       if (entry.userId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -833,7 +832,7 @@ export async function registerRoutes(
 
   app.delete('/api/diary/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const entry = await storage.getDiaryEntry(Number(req.params.id));
       if (!entry) return res.status(404).json({ message: "Entry not found" });
       if (entry.userId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -846,7 +845,7 @@ export async function registerRoutes(
 
   app.patch('/api/diary/:id/restore', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const entry = await storage.getDiaryEntry(Number(req.params.id));
       if (!entry) return res.status(404).json({ message: "Entry not found" });
       if (entry.userId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -892,7 +891,7 @@ export async function registerRoutes(
   app.get('/api/goals', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const allGoals = await storage.getGoals(req.family.id);
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const visible = allGoals.filter((g: any) => {
         if (g.visibility === "family") return true;
         if (g.creatorId === userId) return true;
@@ -906,7 +905,7 @@ export async function registerRoutes(
 
   app.post('/api/goals', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { title, description, categoryId, type, progressType, visibility, targetValue, unit, dueDate, linkedSavingsGoalId } = req.body;
       if (!title) return res.status(400).json({ message: "Title is required" });
       const goal = await storage.createGoal({
@@ -933,7 +932,7 @@ export async function registerRoutes(
 
   app.patch('/api/goals/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const goal = await storage.getGoal(Number(req.params.id));
       if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
       if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -947,7 +946,7 @@ export async function registerRoutes(
 
   app.delete('/api/goals/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const goal = await storage.getGoal(Number(req.params.id));
       if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
       if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -962,7 +961,7 @@ export async function registerRoutes(
     try {
       const goal = await storage.getGoal(Number(req.params.id));
       if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
       const items = await storage.getGoalItems(goal.id);
       res.json(items);
@@ -975,7 +974,7 @@ export async function registerRoutes(
     try {
       const goal = await storage.getGoal(Number(req.params.id));
       if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
       const { title, sortOrder } = req.body;
       if (!title) return res.status(400).json({ message: "Title is required" });
@@ -990,7 +989,7 @@ export async function registerRoutes(
     try {
       const item = await storage.getGoalItemWithGoal(Number(req.params.id));
       if (!item || item.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       if (item.visibility === "personal" && item.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
       const updated = await storage.updateGoalItem(item.itemId, req.body);
       if (!updated) return res.status(404).json({ message: "Item not found" });
@@ -1004,7 +1003,7 @@ export async function registerRoutes(
     try {
       const item = await storage.getGoalItemWithGoal(Number(req.params.id));
       if (!item || item.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       if (item.visibility === "personal" && item.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
       await storage.deleteGoalItem(item.itemId);
       res.json({ success: true });
@@ -1017,7 +1016,7 @@ export async function registerRoutes(
 
   app.get('/api/wishlists', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const all = await storage.getWishlists(req.family.id);
       const visible = all.filter((w: any) => {
         if (w.visibility === "family") return true;
@@ -1032,7 +1031,7 @@ export async function registerRoutes(
 
   app.post('/api/wishlists', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { name, description, visibility, hideClaimedBy } = req.body;
       if (!name) return res.status(400).json({ message: "Name is required" });
       const wl = await storage.createWishlist({
@@ -1051,7 +1050,7 @@ export async function registerRoutes(
 
   app.patch('/api/wishlists/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const wl = await storage.getWishlist(Number(req.params.id));
       if (!wl || wl.familyId !== req.family.id) return res.status(404).json({ message: "Not found" });
       if (wl.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -1064,7 +1063,7 @@ export async function registerRoutes(
 
   app.delete('/api/wishlists/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const wl = await storage.getWishlist(Number(req.params.id));
       if (!wl || wl.familyId !== req.family.id) return res.status(404).json({ message: "Not found" });
       if (wl.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -1077,7 +1076,7 @@ export async function registerRoutes(
 
   app.get('/api/wishlists/:id/items', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const wl = await storage.getWishlist(Number(req.params.id));
       if (!wl || wl.familyId !== req.family.id) return res.status(404).json({ message: "Not found" });
       if (wl.visibility === "private" && wl.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -1096,7 +1095,7 @@ export async function registerRoutes(
 
   app.post('/api/wishlists/:id/items', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const wl = await storage.getWishlist(Number(req.params.id));
       if (!wl || wl.familyId !== req.family.id) return res.status(404).json({ message: "Not found" });
       if (wl.creatorId !== userId) return res.status(403).json({ message: "Only the list owner can add items" });
@@ -1121,7 +1120,7 @@ export async function registerRoutes(
 
   app.patch('/api/wishlists/items/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const itemInfo = await storage.getWishlistItemWithWishlist(Number(req.params.id));
       if (!itemInfo || itemInfo.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
       if (itemInfo.visibility === "private" && itemInfo.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
@@ -1166,7 +1165,7 @@ export async function registerRoutes(
 
   app.delete('/api/wishlists/items/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const itemInfo = await storage.getWishlistItemWithWishlist(Number(req.params.id));
       if (!itemInfo || itemInfo.familyId !== req.family.id) return res.status(404).json({ message: "Item not found" });
       if (itemInfo.creatorId !== userId) return res.status(403).json({ message: "Only the list owner can delete items" });
@@ -1181,7 +1180,7 @@ export async function registerRoutes(
 
   app.get('/api/leave-time/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
       res.json(settings);
     } catch (err) {
@@ -1191,7 +1190,7 @@ export async function registerRoutes(
 
   app.put('/api/leave-time/settings', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { isEnabled, schedule, reminderMinutes, visibility, showOnDashboard, checklistEnabled, defaultChecklist } = req.body;
       const settings = await storage.upsertLeaveTimeSettings(req.family.id, userId, {
         isEnabled: isEnabled !== undefined ? isEnabled : true,
@@ -1210,7 +1209,7 @@ export async function registerRoutes(
 
   app.get('/api/leave-time/today', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
       if (!settings || !settings.isEnabled) return res.json({ hasLeaveTime: false });
 
@@ -1244,7 +1243,7 @@ export async function registerRoutes(
 
   app.put('/api/leave-time/override', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
       if (!settings) return res.status(404).json({ message: "No leave time settings found" });
 
@@ -1264,7 +1263,7 @@ export async function registerRoutes(
 
   app.delete('/api/leave-time/override/:date', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const settings = await storage.getLeaveTimeSettings(req.family.id, userId);
       if (!settings) return res.status(404).json({ message: "No leave time settings found" });
       await storage.deleteLeaveTimeOverride(settings.id, req.params.date);
@@ -1276,7 +1275,7 @@ export async function registerRoutes(
 
   app.get('/api/leave-time/templates', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const templates = await storage.getLeaveTimeTemplates(req.family.id, userId);
       res.json(templates);
     } catch (err) {
@@ -1286,7 +1285,7 @@ export async function registerRoutes(
 
   app.post('/api/leave-time/templates', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { name, items } = req.body;
       if (!name || !items?.length) return res.status(400).json({ message: "Name and items are required" });
       const template = await storage.createLeaveTimeTemplate({ familyId: req.family.id, userId, name, items });
@@ -1298,7 +1297,7 @@ export async function registerRoutes(
 
   app.delete('/api/leave-time/templates/:id', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.deleteLeaveTimeTemplate(Number(req.params.id), req.family.id, userId);
       res.json({ success: true });
     } catch (err) {
@@ -1337,7 +1336,7 @@ export async function registerRoutes(
       const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 86400000) : null;
       const invite = await storage.createFamilyInvite({
         familyId: req.family.id,
-        invitedBy: req.user.claims.sub,
+        invitedBy: req.session.userId,
         token,
         role: role || "Adult",
         displayName: displayName || null,
@@ -1386,7 +1385,7 @@ export async function registerRoutes(
 
   app.post('/api/invite/:token/accept', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const invite = await storage.getFamilyInviteByToken(req.params.token);
       if (!invite) return res.status(404).json({ message: "Invite not found" });
       if (invite.status !== "pending") return res.status(410).json({ message: "Invite is no longer valid" });
@@ -1447,7 +1446,7 @@ export async function registerRoutes(
 
   app.post('/api/caregivers', isAuthenticated, requireFamily, requireOwner, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { caregiverUserId, displayName, accessType, expiresAt, assignedChildIds, permissions } = req.body;
       if (!caregiverUserId) return res.status(400).json({ message: "Caregiver user ID is required" });
 
@@ -1463,9 +1462,9 @@ export async function registerRoutes(
       const existing = await storage.getCaregiverByUserId(req.family.id, caregiverUserId);
       if (existing) return res.status(400).json({ message: "This user is already a caregiver for your family" });
 
-      const existingUser = await authStorage.getUser(caregiverUserId);
+      const [existingUser] = await db.select().from(users).where(eq(users.id, caregiverUserId));
       if (!existingUser) {
-        await authStorage.upsertUser({
+        await db.insert(users).values({
           id: caregiverUserId,
           email: `${caregiverUserId}@caregiver.pending`,
           firstName: displayName || "Caregiver",
@@ -1520,7 +1519,7 @@ export async function registerRoutes(
 
   app.get('/api/caregiver/status', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       if (!req.isCaregiver) return res.json({ isCaregiver: false });
       const cg = await storage.getCaregiverByUserId(req.family.id, userId);
       if (!cg) return res.json({ isCaregiver: false });
@@ -1566,7 +1565,7 @@ export async function registerRoutes(
       const perms = (req.caregiverRecord.permissions as any) || {};
       if (!perms.careNotesEnabled) return res.status(403).json({ message: "Care notes not enabled" });
 
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { childId, type, content } = req.body;
       if (!content) return res.status(400).json({ message: "Content is required" });
 
@@ -1666,7 +1665,7 @@ export async function registerRoutes(
 
   app.get('/api/academics/classes', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const studentId = req.query.studentId as string || undefined;
       const role = await storage.getMemberRole(req.family.id, userId);
       if (role === 'Child' || role === 'Youth') {
@@ -1685,7 +1684,7 @@ export async function registerRoutes(
     try {
       const { name, teacherName, gradingScale, semester, studentId } = req.body;
       if (!name) return res.status(400).json({ message: "Class name required" });
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const cls = await storage.createAcademicClass({
         familyId: req.family.id,
         studentId: studentId || userId,
@@ -1769,7 +1768,7 @@ export async function registerRoutes(
 
   app.get('/api/workouts', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const targetUserId = req.query.userId as string || undefined;
       const role = await storage.getMemberRole(req.family.id, userId);
       if (targetUserId && targetUserId !== userId) {
@@ -1797,7 +1796,7 @@ export async function registerRoutes(
 
   app.post('/api/workouts', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { type, duration, reps, sets, weight, distance, distanceUnit, notes, isPrivate, date } = req.body;
       if (!type) return res.status(400).json({ message: "Workout type required" });
       const workout = await storage.createWorkout({
@@ -1842,7 +1841,7 @@ export async function registerRoutes(
 
   app.post('/api/conversations/:id/mute', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { duration } = req.body;
       let until: Date | null = null;
       if (duration === '1h') until = new Date(Date.now() + 60 * 60 * 1000);
@@ -1859,7 +1858,7 @@ export async function registerRoutes(
 
   app.post('/api/conversations/:id/unmute', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       await storage.muteConversation(Number(req.params.id), userId, null);
       res.json({ success: true });
     } catch (err) {
@@ -1869,7 +1868,7 @@ export async function registerRoutes(
 
   app.post('/api/conversations', isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { name, participantIds, type } = req.body;
       if (type === 'group') {
         if (!name || !participantIds || participantIds.length < 2) {
@@ -1926,7 +1925,7 @@ export async function registerRoutes(
 
   app.post('/api/snapshots/generate', isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { type, period } = req.body;
       if (!type || !period) return res.status(400).json({ message: "Type and period required" });
 
@@ -1991,7 +1990,7 @@ export async function registerRoutes(
   // ============ CAREGIVER CHECKLISTS ============
   app.get("/api/caregiver-checklists", isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       if (req.isCaregiver && req.caregiverRecord) {
         const checklists = await storage.getCaregiverChecklists(req.family.id, req.caregiverRecord.id);
         return res.json(checklists);
@@ -2005,7 +2004,7 @@ export async function registerRoutes(
 
   app.post("/api/caregiver-checklists", isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { title, items, caregiverId } = req.body;
       if (!title || !caregiverId) return res.status(400).json({ message: "Title and caregiverId required" });
       const checklist = await storage.createCaregiverChecklist({
@@ -2048,7 +2047,7 @@ export async function registerRoutes(
   // ============ USER PREFERENCES ============
   app.get("/api/preferences", isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const prefs = await storage.getUserPreferences(userId, req.family.id);
       res.json(prefs || { dashboardWidgets: [], navOrder: [] });
     } catch (err) {
@@ -2058,7 +2057,7 @@ export async function registerRoutes(
 
   app.put("/api/preferences", isAuthenticated, requireFamily, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session.userId;
       const { dashboardWidgets, navOrder } = req.body;
       const prefs = await storage.upsertUserPreferences(userId, req.family.id, {
         dashboardWidgets: dashboardWidgets || [],

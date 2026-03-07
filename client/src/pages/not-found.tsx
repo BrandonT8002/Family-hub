@@ -26,7 +26,7 @@ export default function NotFound() {
             </Button>
             <Button
               variant="outline"
-              onClick={() => window.location.href = "/api/logout"}
+              onClick={async () => { await fetch("/api/auth/logout", { method: "POST", credentials: "include" }); window.location.href = "/"; }}
               className="w-full rounded-xl h-11 font-bold border-slate-200 text-slate-600"
               data-testid="button-logout-notfound"
             >
