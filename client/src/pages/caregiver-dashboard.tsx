@@ -2,27 +2,30 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useCaregiverStatus, useCaregiverSchedule, useCaregiverNotes, useCreateCareNote } from "@/hooks/use-caregivers";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useCaregiverStatus, useCaregiverSchedule, useCaregiverNotes, useCreateCareNote, useCaregiverChecklists, useUpdateCaregiverChecklist } from "@/hooks/use-caregivers";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Baby, CalendarDays, ClipboardList, MessageSquare, Clock, Plus } from "lucide-react";
+import { Loader2, Baby, CalendarDays, ClipboardList, MessageSquare, Clock, Plus, ListChecks } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
 
 const NOTE_TYPES = [
-  { value: "feeding", label: "Feeding", emoji: "🍼" },
-  { value: "diaper", label: "Diaper Change", emoji: "👶" },
-  { value: "medication", label: "Medication", emoji: "💊" },
-  { value: "nap", label: "Nap Time", emoji: "😴" },
-  { value: "behavioral", label: "Behavioral", emoji: "📋" },
-  { value: "mood", label: "Mood", emoji: "😊" },
-  { value: "general", label: "General", emoji: "📝" },
+  { value: "feeding", label: "Feeding" },
+  { value: "diaper", label: "Diaper Change" },
+  { value: "medication", label: "Medication" },
+  { value: "nap", label: "Nap Time" },
+  { value: "behavioral", label: "Behavioral" },
+  { value: "mood", label: "Mood" },
+  { value: "general", label: "General" },
 ];
 
 export default function CaregiverDashboard() {
   const { data: status, isLoading } = useCaregiverStatus();
   const { data: schedule } = useCaregiverSchedule();
   const { data: notes } = useCaregiverNotes();
+  const { data: checklists } = useCaregiverChecklists();
+  const updateChecklist = useUpdateCaregiverChecklist();
   const createNote = useCreateCareNote();
   const { toast } = useToast();
 
@@ -154,6 +157,59 @@ export default function CaregiverDashboard() {
         </CardContent>
       </Card>
 
+      {(checklists || []).length > 0 && (
+        <Card className="rounded-[2rem] border-white/80 shadow-lg bg-white/90 backdrop-blur-xl">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-teal-50 p-2 rounded-xl">
+                <ListChecks className="w-5 h-5 text-teal-500" />
+              </div>
+              <CardTitle className="text-lg font-black">Checklists</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(checklists || []).map((cl: any) => {
+              const items = (cl.items as Array<{ text: string; checked: boolean }>) || [];
+              const checkedCount = items.filter(i => i.checked).length;
+              const allDone = items.length > 0 && checkedCount === items.length;
+              return (
+                <div key={cl.id} className="p-4 bg-teal-50/30 rounded-2xl border border-teal-100/50" data-testid={`checklist-card-${cl.id}`}>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="font-bold text-sm text-slate-800">{cl.title}</p>
+                    <Badge variant={allDone ? "default" : "outline"} className="rounded-lg text-[10px] font-bold">
+                      {checkedCount}/{items.length}
+                    </Badge>
+                  </div>
+                  <div className="space-y-2">
+                    {items.map((item, idx) => (
+                      <label
+                        key={idx}
+                        className="flex items-center gap-3 cursor-pointer group"
+                        data-testid={`checklist-item-${cl.id}-${idx}`}
+                      >
+                        <Checkbox
+                          checked={item.checked}
+                          onCheckedChange={(checked) => {
+                            const updatedItems = items.map((it, i) =>
+                              i === idx ? { ...it, checked: !!checked } : it
+                            );
+                            updateChecklist.mutate({ id: cl.id, items: updatedItems });
+                          }}
+                          data-testid={`checkbox-${cl.id}-${idx}`}
+                        />
+                        <span className={`text-sm ${item.checked ? "line-through text-slate-400" : "text-slate-700"}`}>
+                          {item.text}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {permissions.careNotesEnabled && (
         <Card className="rounded-[2rem] border-white/80 shadow-lg bg-white/90 backdrop-blur-xl">
           <CardHeader className="pb-3">
@@ -199,7 +255,7 @@ export default function CaregiverDashboard() {
                   <SelectContent className="rounded-xl">
                     {NOTE_TYPES.map((t) => (
                       <SelectItem key={t.value} value={t.value}>
-                        {t.emoji} {t.label}
+                        {t.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -235,7 +291,6 @@ export default function CaregiverDashboard() {
                   return (
                     <div key={note.id} className="p-3 bg-gray-50 rounded-xl" data-testid={`care-note-${note.id}`}>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm">{typeInfo.emoji}</span>
                         <span className="text-xs font-bold text-gray-600 capitalize">{typeInfo.label}</span>
                         <span className="text-[10px] text-gray-400 ml-auto">
                           {noteDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}

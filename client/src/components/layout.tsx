@@ -14,7 +14,7 @@ export const useCaregiverMode = () => useContext(CaregiverContext);
 
 export function Layout({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  const { data: family, isLoading: familyLoading } = useFamily();
+  const { data: family, isLoading: familyLoading, error: familyError, refetch: familyRefetch } = useFamily();
   const { data: cgStatus } = useCaregiverStatus();
   const isCaregiverMode = cgStatus?.isCaregiver || false;
   const [location] = useLocation();
@@ -72,6 +72,25 @@ export function Layout({ children }: { children: ReactNode }) {
     );
   }
 
+  if (familyError && !family) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+        <p className="text-sm text-muted-foreground" data-testid="text-family-error">Something went wrong loading your family data.</p>
+        <button
+          onClick={() => familyRefetch()}
+          className="px-4 py-2 rounded-md bg-primary text-primary-foreground text-sm font-medium"
+          data-testid="button-retry-family"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
+  if (!family && !familyError) {
+    return <Onboarding />;
+  }
+
   if (!family) {
     return <Onboarding />;
   }
@@ -95,7 +114,7 @@ export function Layout({ children }: { children: ReactNode }) {
         </header>
         <main
           id="main-scroll-area"
-          className="flex-1 overflow-y-auto pb-24 px-4 md:px-6 lg:px-8"
+          className="flex-1 overflow-y-auto pb-32 px-4 md:px-6 lg:px-8"
         >
           <AnimatePresence mode="wait">
             <motion.div 

@@ -10,6 +10,7 @@ export function useGroceryLists() {
       if (!res.ok) throw new Error("Failed to fetch grocery lists");
       return api.groceryLists.list.responses[200].parse(await res.json());
     },
+    refetchInterval: 30000,
   });
 }
 
@@ -46,9 +47,10 @@ export function useGroceryItems(listId: string | number) {
     queryFn: async () => {
       const res = await fetch(path, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to fetch grocery items");
-      return api.groceryItems.list.responses[200].parse(await res.json());
+      return res.json();
     },
     enabled: !!listId,
+    refetchInterval: 15000,
   });
 }
 

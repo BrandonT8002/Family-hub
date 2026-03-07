@@ -348,7 +348,7 @@ export default function Chat() {
   const activeConvos = sortedConvos.filter((c: any) => !isPending(c));
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] lg:h-[calc(100vh-2rem)] max-w-6xl mx-auto bg-card border border-border/50 rounded-[2rem] shadow-sm overflow-hidden" data-testid="chat-container">
+    <div className="flex h-[calc(100vh-10rem)] lg:h-[calc(100vh-8rem)] max-w-6xl mx-auto bg-card border border-border/50 rounded-[2rem] shadow-sm overflow-hidden" data-testid="chat-container">
       
       {/* Conversation List - Sidebar */}
       <div className={`w-full lg:w-80 border-r border-border/30 flex flex-col bg-card ${mobileShowMessages ? 'hidden lg:flex' : 'flex'}`}>
@@ -738,11 +738,11 @@ export default function Chat() {
                           <Avatar className="w-6 h-6 border border-border/50">
                             <AvatarImage src={msg.user?.profileImageUrl || undefined} />
                             <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
-                              {msg.user?.firstName?.[0] || '?'}
+                              {(msg.displayName || msg.user?.firstName)?.[0] || '?'}
                             </AvatarFallback>
                           </Avatar>
                           <span className="text-xs font-medium text-muted-foreground">
-                            {isMe ? 'You' : msg.user?.firstName}
+                            {isMe ? 'You' : (msg.displayName || msg.user?.firstName || 'Unknown')}
                           </span>
                           <span className="text-[10px] text-muted-foreground/50">
                             {format(new Date(msg.createdAt), 'h:mm a')}

@@ -5,6 +5,7 @@ import type { Goal, GoalItem, GoalCategory } from "@shared/schema";
 export function useGoals() {
   return useQuery<Goal[]>({
     queryKey: ["/api/goals"],
+    refetchInterval: 30000,
   });
 }
 

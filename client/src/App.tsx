@@ -23,6 +23,7 @@ import Academics from "@/pages/academics";
 import Workouts from "@/pages/workouts";
 import Connections from "@/pages/connections";
 import Snapshots from "@/pages/snapshots";
+import Members from "@/pages/members";
 import JoinFamily from "@/pages/join";
 
 function HomeSwitcher() {
@@ -53,6 +54,7 @@ function Router() {
         <Route path="/academics">{() => <ProtectedRoute component={Academics} />}</Route>
         <Route path="/workouts">{() => <ProtectedRoute component={Workouts} />}</Route>
         <Route path="/connections">{() => <ProtectedRoute component={Connections} />}</Route>
+        <Route path="/members">{() => <ProtectedRoute component={Members} />}</Route>
         <Route path="/snapshots">{() => <ProtectedRoute component={Snapshots} />}</Route>
         <Route path="/settings">{() => <ProtectedRoute component={Settings} />}</Route>
         <Route path="/caregiver" component={CaregiverDashboard}/>

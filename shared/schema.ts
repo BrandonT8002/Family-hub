@@ -134,6 +134,7 @@ export const goals = pgTable("goals", {
   bestStreak: integer("best_streak").default(0),
   lastStreakDate: timestamp("last_streak_date"),
   linkedSavingsGoalId: integer("linked_savings_goal_id").references(() => savingsGoals.id),
+  lastUpdatedBy: text("last_updated_by").references(() => users.id),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -166,6 +167,7 @@ export const groceryItems = pgTable("grocery_items", {
   isChecked: boolean("is_checked").default(false),
   notes: text("notes"),
   assignedTo: text("assigned_to").references(() => users.id),
+  addedBy: text("added_by").references(() => users.id),
 });
 
 export const wishlists = pgTable("wishlists", {
@@ -503,3 +505,33 @@ export const snapshots = pgTable("snapshots", {
 });
 
 export type Snapshot = typeof snapshots.$inferSelect;
+
+// ============ CAREGIVER CHECKLISTS ============
+export const caregiverChecklists = pgTable("caregiver_checklists", {
+  id: serial("id").primaryKey(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  caregiverId: integer("caregiver_id").references(() => caregivers.id).notNull(),
+  title: text("title").notNull(),
+  items: jsonb("items").$type<Array<{ text: string; checked: boolean }>>().default([]).notNull(),
+  createdBy: text("created_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertCaregiverChecklistSchema = createInsertSchema(caregiverChecklists).omit({ id: true, createdAt: true });
+export type InsertCaregiverChecklist = z.infer<typeof insertCaregiverChecklistSchema>;
+export type CaregiverChecklist = typeof caregiverChecklists.$inferSelect;
+
+// ============ USER PREFERENCES ============
+export const userPreferences = pgTable("user_preferences", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").references(() => users.id).notNull(),
+  familyId: integer("family_id").references(() => families.id).notNull(),
+  dashboardWidgets: jsonb("dashboard_widgets").$type<Array<{ key: string; enabled: boolean; order: number }>>().default([]),
+  navOrder: jsonb("nav_order").$type<Array<{ key: string; enabled: boolean; order: number }>>().default([]),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertUserPreferencesSchema = createInsertSchema(userPreferences).omit({ id: true, createdAt: true, updatedAt: true });
+export type InsertUserPreferences = z.infer<typeof insertUserPreferencesSchema>;
+export type UserPreferences = typeof userPreferences.$inferSelect;

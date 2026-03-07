@@ -97,3 +97,45 @@ export function useCareNotes(childId?: number) {
     },
   });
 }
+
+export function useCaregiverChecklists() {
+  return useQuery<any[]>({
+    queryKey: ["/api/caregiver-checklists"],
+  });
+}
+
+export function useCreateCaregiverChecklist() {
+  return useMutation({
+    mutationFn: async (data: { title: string; caregiverId: number; items: Array<{ text: string; checked: boolean }> }) => {
+      const res = await apiRequest("POST", "/api/caregiver-checklists", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/caregiver-checklists"] });
+    },
+  });
+}
+
+export function useUpdateCaregiverChecklist() {
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; items?: Array<{ text: string; checked: boolean }>; title?: string }) => {
+      const res = await apiRequest("PATCH", `/api/caregiver-checklists/${id}`, data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/caregiver-checklists"] });
+    },
+  });
+}
+
+export function useDeleteCaregiverChecklist() {
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("DELETE", `/api/caregiver-checklists/${id}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/caregiver-checklists"] });
+    },
+  });
+}

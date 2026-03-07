@@ -451,12 +451,14 @@ export async function registerRoutes(
   app.post(api.groceryItems.create.path, isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
     try {
       const input = api.groceryItems.create.input.parse(req.body);
+      const userId = req.user.claims.sub;
       const item = await storage.createGroceryItem({
         ...input,
         listId: Number(req.params.listId),
         price: input.price?.toString() || "0",
         notes: (req.body as any).notes || null,
         assignedTo: (req.body as any).assignedTo || null,
+        addedBy: userId,
       });
       res.status(201).json(item);
     } catch (err) {
@@ -935,7 +937,7 @@ export async function registerRoutes(
       const goal = await storage.getGoal(Number(req.params.id));
       if (!goal || goal.familyId !== req.family.id) return res.status(404).json({ message: "Goal not found" });
       if (goal.visibility === "personal" && goal.creatorId !== userId) return res.status(403).json({ message: "Access denied" });
-      const updated = await storage.updateGoal(goal.id, req.family.id, req.body);
+      const updated = await storage.updateGoal(goal.id, req.family.id, { ...req.body, lastUpdatedBy: userId });
       if (!updated) return res.status(404).json({ message: "Goal not found" });
       res.json(updated);
     } catch (err) {
@@ -1983,6 +1985,88 @@ export async function registerRoutes(
       res.json(snapshot);
     } catch (err) {
       res.status(500).json({ message: "Failed to generate snapshot" });
+    }
+  });
+
+  // ============ CAREGIVER CHECKLISTS ============
+  app.get("/api/caregiver-checklists", isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (req.isCaregiver && req.caregiverRecord) {
+        const checklists = await storage.getCaregiverChecklists(req.family.id, req.caregiverRecord.id);
+        return res.json(checklists);
+      }
+      const checklists = await storage.getCaregiverChecklists(req.family.id);
+      res.json(checklists);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch checklists" });
+    }
+  });
+
+  app.post("/api/caregiver-checklists", isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { title, items, caregiverId } = req.body;
+      if (!title || !caregiverId) return res.status(400).json({ message: "Title and caregiverId required" });
+      const checklist = await storage.createCaregiverChecklist({
+        familyId: req.family.id,
+        caregiverId,
+        title,
+        items: items || [],
+        createdBy: userId,
+      });
+      res.status(201).json(checklist);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to create checklist" });
+    }
+  });
+
+  app.patch("/api/caregiver-checklists/:id", isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { items, title } = req.body;
+      const updateData: any = {};
+      if (items !== undefined) updateData.items = items;
+      if (title !== undefined) updateData.title = title;
+      const checklist = await storage.updateCaregiverChecklist(id, updateData);
+      res.json(checklist);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to update checklist" });
+    }
+  });
+
+  app.delete("/api/caregiver-checklists/:id", isAuthenticated, requireFamily, blockCaregivers, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      await storage.deleteCaregiverChecklist(id, req.family.id);
+      res.json({ success: true });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to delete checklist" });
+    }
+  });
+
+  // ============ USER PREFERENCES ============
+  app.get("/api/preferences", isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const prefs = await storage.getUserPreferences(userId, req.family.id);
+      res.json(prefs || { dashboardWidgets: [], navOrder: [] });
+    } catch (err) {
+      res.status(500).json({ message: "Failed to fetch preferences" });
+    }
+  });
+
+  app.put("/api/preferences", isAuthenticated, requireFamily, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { dashboardWidgets, navOrder } = req.body;
+      const prefs = await storage.upsertUserPreferences(userId, req.family.id, {
+        dashboardWidgets: dashboardWidgets || [],
+        navOrder: navOrder || [],
+      });
+      res.json(prefs);
+    } catch (err) {
+      res.status(500).json({ message: "Failed to save preferences" });
     }
   });
 

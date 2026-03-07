@@ -7,13 +7,14 @@ A premium family productivity "operating system" web app.
 - **Backend**: Express.js, TypeScript
 - **Database**: PostgreSQL with Drizzle ORM
 - **Auth**: Replit Auth (OIDC)
+- **PWA**: manifest.json, service worker (sw.js), app icons for mobile install
 
 ## Project Structure
 ```
 client/src/
-  pages/        - Dashboard, Schedule, Money, Groceries, GroceryListDetail, Chat, Diary, Goals, Wishlists, LeaveTime, Settings (7-section hub), CaregiverDashboard, CareNotes, Academics, Workouts, Connections, Snapshots
+  pages/        - Dashboard, Schedule, Money, Groceries, GroceryListDetail, Chat, Diary, Goals, Wishlists, LeaveTime, Settings (8-section hub), CaregiverDashboard, CareNotes, Academics, Workouts, Connections, Snapshots, Members
   components/   - Layout, BottomNav, UI components (shadcn)
-  hooks/        - use-auth, use-family, use-chat, use-expenses, use-diary, use-goals, use-wishlists, use-leave-time, use-caregivers
+  hooks/        - use-auth, use-family, use-chat, use-expenses, use-diary, use-goals, use-wishlists, use-leave-time, use-caregivers, use-preferences, use-groceries
   lib/          - queryClient
 shared/
   schema.ts     - Drizzle schema (all tables)
@@ -24,14 +25,20 @@ server/
   storage.ts    - DatabaseStorage class (all CRUD)
   db.ts         - Database connection
   vite.ts       - Vite dev server setup (DO NOT MODIFY)
+client/public/
+  manifest.json - PWA manifest
+  sw.js         - Service worker
+  icon-192.png  - App icon 192x192
+  icon-512.png  - App icon 512x512
 ```
 
 ## Navigation
 - **Bottom Nav Bar** (replaced sidebar): Floating pill at screen bottom, frosted glass, auto-hides on scroll down, reappears on scroll up
   - Primary tabs (always visible): Home, Schedule, Chat, Shopping
-  - "More" button opens slide-up panel with: Money, Diary, Goals, Wishlists, Leave Time, Settings, Profile/Logout
+  - "More" button opens slide-up panel with configurable items: Money, Goals, Wishlists, Academics, Workouts, Snapshots, Diary, Leave Time, Members, Connections, Caregiver, Settings, Profile/Logout
+  - More menu respects user preferences (order and visibility from usePreferences hook)
   - Active indicator: animated pill with layoutId transition
-  - All screens use bottom padding (pb-24) to account for nav height
+  - All screens use bottom padding (pb-32) to account for nav height
 
 ## Database Tables
 - **users** - Replit Auth users
@@ -42,58 +49,59 @@ server/
 - **financial_schedule** - Bills/paydays (creatorId, billType, category, notes, isPaid, autoPay, reminderDays)
 - **savings_goals** - Family savings
 - **goal_categories** - User-created goal categories (name, icon, color)
-- **goals** - Goal tracking (title, description, categoryId, type [short/long-term], progressType [checklist/numeric/streak/milestone], visibility [personal/family], status [active/completed/archived], targetValue, currentValue, unit, dueDate, streak, bestStreak, lastStreakDate, linkedSavingsGoalId)
-- **goal_items** - Checklist/milestone items for goals (title, isCompleted, sortOrder)
-- **wishlists** - Wishlist lists (name, description, visibility [family/private], hideClaimedBy for gift surprises, creatorId)
-- **wishlist_items** - Wishlist items (name, category, estimatedPrice, storeName, storeLink, notes, priority, wantOrNeed, status [unclaimed/claimed/purchased], claimedBy)
-- **grocery_lists** - Shopping lists (with creatorId, isPrivate, listCategory for categorization)
-- **grocery_items** - Items in lists
-- **leave_time_settings** - Per-user leave time config (schedule as JSONB {mon:"07:45",...}, reminderMinutes, visibility, showOnDashboard, checklistEnabled, defaultChecklist)
-- **leave_time_overrides** - Date-specific overrides (leaveTime, isSkipped, customChecklist)
-- **leave_time_templates** - Reusable checklist templates (name, items[])
-- **conversations** - Chat conversations (group/dm), with status (active/pending for message requests)
-- **conversation_participants** - Users in each conversation (lastReadAt for unread tracking)
-- **chat_messages** - Messages linked to conversations (messageType: text/image/video/voice, mediaUrl, mediaDuration)
+- **goals** - Goal tracking (title, description, categoryId, type, progressType, visibility, status, targetValue, currentValue, unit, dueDate, streak, bestStreak, lastStreakDate, linkedSavingsGoalId, lastUpdatedBy)
+- **goal_items** - Checklist/milestone items for goals
+- **wishlists** - Wishlist lists
+- **wishlist_items** - Wishlist items
+- **grocery_lists** - Shopping lists (creatorId, isPrivate, listCategory)
+- **grocery_items** - Items in lists (addedBy field for collaboration tracking)
+- **leave_time_settings** - Per-user leave time config
+- **leave_time_overrides** - Date-specific overrides
+- **leave_time_templates** - Reusable checklist templates
+- **conversations** - Chat conversations (group/dm)
+- **conversation_participants** - Users in each conversation
+- **chat_messages** - Messages linked to conversations
 - **blocks** - User blocking system
-- **diary_entries** - Private diary entries (title, body, mood, tags, photoUrls, isPrivate, sharedWith, soft-delete)
-- **diary_settings** - Per-user diary settings (PIN lock, weekly reflection prompt)
-- **caregivers** - Caregiver access records (familyId, userId, invitedBy, status, accessType, expiresAt, assignedChildIds jsonb, permissions jsonb, displayName)
-- **care_notes** - Caregiver activity logs (familyId, caregiverId, childId, type, content, noteTime, createdBy, isLocked)
+- **diary_entries** - Private diary entries
+- **diary_settings** - Per-user diary settings
+- **caregivers** - Caregiver access records
+- **care_notes** - Caregiver activity logs
+- **caregiver_checklists** - Shared checklists between parents and caregivers (familyId, caregiverId, title, items JSONB, createdBy)
+- **user_preferences** - Per-user dashboard/nav personalization (userId, familyId, dashboardWidgets JSONB, navOrder JSONB)
 
 ## Features
-- **Dashboard**: Overview of events, expenses, savings, Leave Time widget (countdown + interactive checklist)
-- **Schedule**: Calendar with proper recurring events (Daily/Weekly/Monthly/Yearly with day-of-week selection, presets for Weekdays/Every day/Weekends, optional end date), event expansion across calendar, edit/delete events (creator-only), creator attribution on event cards with display name fallback, personal event privacy (only creator sees personal events, shared events visible to all family members)
-- **Money**: Bill-centric management with bill types (housing, utility, subscription, insurance, transportation, education, internet, shopping), recurring/one-time tracking, due date mapping with overdue/due-soon alerts, annual cost projections per bill and by type, paid/unpaid toggle, auto-pay flag, edit/delete bills, expense logging, savings goals; bills appear on Schedule calendar
-- **Groceries/Shopping**: Shopping lists with Wants/Needs categorization, private/shared toggle per list, list categories (Groceries, Household, School Supplies, Home Improvement, Baby & Kids, Pet Supplies, Health & Pharmacy, Electronics, General, Other), category filtering
-- **Wishlists**: Personal and family wishlists with gift surprise support (hideClaimedBy), item claiming by family members, purchased tracking, item categories, estimated prices, store links, priority levels, want/need classification, visibility (family/private), creator-only item management
-- **Chat**: Family group chat + private DMs with message request system, blocking, message deletion, media messages (photos, videos, voice notes via file upload + MediaRecorder API), group chat creation, "Take Space" mute/unmute (1h/8h/24h/7d/indefinite) with muted indicator in sidebar, conversation dropdown menu for all conversation types, unread message tracking (per-conversation badges + bold names, auto-mark-read on selection, red notification badge on bottom nav Chat icon and dashboard quick-action)
-- **Diary**: Protected private reflection space — PIN lock, mood tracking (10 moods), tags, photo attachments, privacy per entry, search/filter, mood insights with distribution charts, soft-delete with 30-day trash, diary settings (PIN, weekly reflection prompt)
-- **Goals**: Comprehensive goal tracking with user-created categories (starter pack available), short-term and long-term goals, 4 progress types (checklist, numeric, streak/consistency, milestones), personal/family visibility, active/completed/archived status, due date tracking with overdue alerts, filtering by type/category, sorting by due date/recently updated, streak tracking with daily check-in and best streak counter
-- **Leave Time**: Intention-setting walk-out time system — recurring weekly schedule (per-day times), same-weekday/everyday quick-set, daily overrides, skip today, pre-departure checklist with quick-add suggestions and reusable templates, reminder timing (5-30 min), private/family visibility, dashboard integration with countdown and interactive checklist, kind non-judgmental tone
-- **Caregiver Mode**: Limited-access mode for babysitters/nannies/grandparents — owner adds caregivers by Replit user ID, assigns children, configures permissions (schedule access level, chat, care notes). Caregivers see simplified dashboard with assigned children, schedule (non-personal events only), care note logging (feeding/diaper/medication/nap/behavioral/mood/general with 24h lock), and parent messaging (DMs only with adults, no group chat access). Bottom nav shows 4 items for caregivers (Home, Schedule, Notes, Chat). All sensitive routes (money, diary, goals, wishlists, groceries, leave-time) blocked via `blockCaregivers` middleware. Frontend route guards redirect caregivers from protected pages. Chat filtering: server-side conversation list returns DMs only for caregivers; DM creation restricted to Adult/Owner recipients; client-side member list filtered accordingly.
-- **Settings**: 7-section control hub with tab navigation:
-  - **Appearance**: Theme presets (7 presets), font selection (6 fonts), per-module color customization (collapsible), live preview
-  - **Family**: Family name editing, tier plan selector with capacity bars, member list with role badges + temp admin toggle for adults, invite link generation (role/name/expiry), pending/past invite tracking
-  - **Permissions**: Visual role-based permissions matrix (Owner/TempAdmin/Adult/Teen/Youth/Child/Caregiver × 12 modules), color-coded access levels (Full/View/Limited/None), privacy-first info card
-  - **Connections**: Outside family connections — send/accept/decline requests, edit connection permissions (shared events/wishlists/chat/care notes), disconnect
-  - **Chat & Privacy**: Privacy rules info cards, blocked users management with unblock
-  - **Caregivers**: Add/edit/revoke caregivers, assign children, configure permissions (schedule access, chat, care notes)
-  - **Account**: User profile display, family info, logout
-- **Family Tiers**: Core (2 members, 1 caregiver), Plus (5 members, 2 caregivers), Extended (10 members, 4 caregivers). Capacity enforced on invite acceptance and caregiver addition. Downgrade blocked if over limit.
-- **Age Validation**: DOB required on invite acceptance. Roles mapped to age ranges: Adult (18+), Teen (15-17), Youth (13-14), Child (12 and under). Server rejects mismatched age/role.
+- **Dashboard**: Widget-based with personalization — users can toggle and reorder widgets (leaveTime, schedule, todayEvents, quickActions, upcomingBills, savings, tomorrow) via Settings > Personalize
+- **Schedule**: Calendar with recurring events (Daily/Weekly/Monthly/Yearly), creator attribution
+- **Money**: Bill management with types, due dates, auto-pay, annual projections, expenses, savings goals
+- **Groceries/Shopping**: Shopping lists with collaboration — shows who added each item (addedByName), contributors section, prominent privacy toggle, polling for real-time updates
+- **Wishlists**: Personal and family wishlists with gift surprise support
+- **Chat**: Family group chat + DMs with message requests, blocking, media messages, mute, unread tracking, sender names displayed
+- **Diary**: PIN-locked private reflection with mood tracking, tags, photos
+- **Goals**: Goal tracking with +/- progress buttons, categories, 4 progress types, collaboration indicators (creatorDisplayName, lastUpdatedByName), family goals tab, polling
+- **Leave Time**: Walk-out time system with checklist, reminders, dashboard integration
+- **Caregiver Mode**: Limited-access mode with shared checklists, care notes, restricted navigation
+- **Members Hub**: Family member cards with role badges, quick actions (Message, View Schedule)
+- **Settings**: 8-section hub (Appearance, Personalize, Family, Permissions, Connections, Chat & Privacy, Caregivers, Account)
+  - **Personalize**: Dashboard widget toggles/reorder + navigation menu item toggles/reorder
+- **PWA**: Installable on mobile with manifest.json and service worker
 
 ## Privacy Architecture
 - Role-based: Owner, Adult, Teen, Youth, Child, Caregiver
 - Owner manages structure, not content
 - DMs are private (owner cannot read)
-- Message request system for new DMs
-- Blocking with confirmation
-- Message deletion (soft delete)
-- Leave Time is private by default, optionally shared with family
+- Blocking, message requests, soft-delete
+- Leave Time private by default
 
 ## Design Notes
-- Font: Configurable (default Bricolage Grotesque), stored in families.fontFamily
-- Theme colors: Applied via inline styles (not Tailwind classes) from families.themeConfig
+- Font: Configurable (default Bricolage Grotesque)
+- Theme colors: Applied via inline styles from families.themeConfig
 - Cards: rounded-[2rem], bg-white/90, backdrop-blur-xl, shadow-sm
-- Bottom nav: Frosted glass (bg-white/80 backdrop-blur-2xl), floating pill, rounded-[1.75rem], shadow-[0_8px_32px], auto-hide on scroll
+- Bottom nav: Frosted glass, floating pill, auto-hide on scroll
 - `data-testid` attributes on interactive elements
+
+## Key Patterns
+- `requireFamily` middleware sets `req.family`, `req.isCaregiver`, `req.caregiverRecord`
+- `blockCaregivers` blocks sensitive routes for caregiver users
+- `requireOwner` checks `req.family.ownerId === userId`
+- Schema push: `printf "1\n1\n1\n1\n1\n" | npx drizzle-kit push --force`
+- Chat unread route (`GET /api/conversations/unread-count`) must be before parameterized routes

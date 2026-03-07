@@ -9,10 +9,12 @@ import {
   Link2, Copy, Loader2, Users, Crown, ChevronUp, AlertTriangle, Settings as SettingsIcon,
   Eye, EyeOff, Lock, MessageSquare, LogOut, User, ShieldCheck, ChevronRight,
   Home, CalendarDays, Wallet, ShoppingCart, BookOpen, Target, Heart, Clock,
-  GraduationCap, Dumbbell, BarChart3, ShieldOff,
+  GraduationCap, Dumbbell, BarChart3, ShieldOff, ClipboardList, Plus, ArrowUp, ArrowDown,
+  LayoutGrid, Menu,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { useCaregivers, useAddCaregiver, useRevokeCaregiver, useUpdateCaregiver } from "@/hooks/use-caregivers";
+import { useCaregivers, useAddCaregiver, useRevokeCaregiver, useUpdateCaregiver, useCaregiverChecklists, useCreateCaregiverChecklist, useDeleteCaregiverChecklist } from "@/hooks/use-caregivers";
+import { usePreferences, useUpdatePreferences, WIDGET_LABELS, NAV_LABELS, DEFAULT_WIDGETS, DEFAULT_NAV, type WidgetPref, type NavPref } from "@/hooks/use-preferences";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -48,6 +50,7 @@ const THEME_PRESETS = [
 
 const SECTIONS = [
   { id: "appearance", label: "Appearance", icon: Palette, description: "Theme, fonts & colors" },
+  { id: "personalize", label: "Personalize", icon: LayoutGrid, description: "Dashboard & menu layout" },
   { id: "family", label: "Family", icon: Users, description: "Members, plan & invites" },
   { id: "permissions", label: "Permissions", icon: ShieldCheck, description: "Role-based access" },
   { id: "connections", label: "Connections", icon: Link2, description: "Linked families" },
@@ -101,6 +104,7 @@ export default function Settings() {
 
       <div className="min-h-[60vh]">
         {activeSection === "appearance" && <AppearanceSection />}
+        {activeSection === "personalize" && <PersonalizationSection />}
         {activeSection === "family" && isOwner && <FamilySection family={family} />}
         {activeSection === "family" && !isOwner && (
           <Card className="rounded-[2rem] border-0 shadow-sm bg-white/90">
@@ -247,6 +251,152 @@ function AppearanceSection() {
               <Check className="w-4 h-4 mr-2" /> Save Changes
             </Button>
             <Button variant="outline" onClick={() => { setTheme(DEFAULT_THEME); setFontFamily("'Bricolage Grotesque', sans-serif"); }} className="rounded-2xl h-12 font-bold border-slate-100" data-testid="button-reset-appearance">
+              <RefreshCcw className="w-4 h-4 mr-2" /> Reset
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PersonalizationSection() {
+  const { widgets, navItems } = usePreferences();
+  const updatePrefs = useUpdatePreferences();
+  const [localWidgets, setLocalWidgets] = useState<WidgetPref[]>([]);
+  const [localNav, setLocalNav] = useState<NavPref[]>([]);
+
+  useEffect(() => {
+    setLocalWidgets(widgets);
+  }, [JSON.stringify(widgets)]);
+
+  useEffect(() => {
+    setLocalNav(navItems);
+  }, [JSON.stringify(navItems)]);
+
+  const toggleWidget = (key: string) => {
+    setLocalWidgets(prev => prev.map(w => w.key === key ? { ...w, enabled: !w.enabled } : w));
+  };
+
+  const moveWidget = (idx: number, dir: -1 | 1) => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= localWidgets.length) return;
+    const copy = [...localWidgets];
+    [copy[idx], copy[newIdx]] = [copy[newIdx], copy[idx]];
+    setLocalWidgets(copy.map((w, i) => ({ ...w, order: i })));
+  };
+
+  const toggleNav = (key: string) => {
+    setLocalNav(prev => prev.map(n => n.key === key ? { ...n, enabled: !n.enabled } : n));
+  };
+
+  const moveNav = (idx: number, dir: -1 | 1) => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= localNav.length) return;
+    const copy = [...localNav];
+    [copy[idx], copy[newIdx]] = [copy[newIdx], copy[idx]];
+    setLocalNav(copy.map((n, i) => ({ ...n, order: i })));
+  };
+
+  const handleSave = () => {
+    updatePrefs.mutate({ dashboardWidgets: localWidgets, navOrder: localNav });
+  };
+
+  const handleReset = () => {
+    setLocalWidgets(DEFAULT_WIDGETS);
+    setLocalNav(DEFAULT_NAV);
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHeader
+        icon={<LayoutGrid className="w-5 h-5 text-indigo-500" />}
+        title="Personalize"
+        description="Choose what appears on your dashboard and arrange your menu."
+        accent="bg-indigo-50"
+      />
+
+      <Card className="rounded-[2rem] border-0 shadow-sm bg-white/90">
+        <CardContent className="pt-6 space-y-5">
+          <div>
+            <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
+              <LayoutGrid className="w-4 h-4 text-indigo-500" /> Dashboard Widgets
+            </label>
+            <p className="text-xs text-slate-400 mb-3">Toggle widgets on/off and reorder them. Drag them up or down to change their position on your home screen.</p>
+            <div className="space-y-1.5">
+              {localWidgets.map((w, idx) => (
+                <div key={w.key} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${w.enabled ? 'bg-indigo-50/50' : 'bg-slate-50/50 opacity-60'}`}>
+                  <Switch
+                    checked={w.enabled}
+                    onCheckedChange={() => toggleWidget(w.key)}
+                    data-testid={`toggle-widget-${w.key}`}
+                  />
+                  <span className="flex-1 text-sm font-semibold text-slate-700">{WIDGET_LABELS[w.key] || w.key}</span>
+                  <div className="flex gap-0.5">
+                    <button
+                      onClick={() => moveWidget(idx, -1)}
+                      disabled={idx === 0}
+                      className="p-1.5 rounded-lg hover:bg-white disabled:opacity-30 transition-all"
+                      data-testid={`button-widget-up-${w.key}`}
+                    >
+                      <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                    </button>
+                    <button
+                      onClick={() => moveWidget(idx, 1)}
+                      disabled={idx === localWidgets.length - 1}
+                      className="p-1.5 rounded-lg hover:bg-white disabled:opacity-30 transition-all"
+                      data-testid={`button-widget-down-${w.key}`}
+                    >
+                      <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-slate-100 pt-5">
+            <label className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3">
+              <Menu className="w-4 h-4 text-indigo-500" /> Menu Items
+            </label>
+            <p className="text-xs text-slate-400 mb-3">Show or hide items in the More menu and arrange them by importance.</p>
+            <div className="space-y-1.5">
+              {localNav.map((n, idx) => (
+                <div key={n.key} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${n.enabled ? 'bg-indigo-50/50' : 'bg-slate-50/50 opacity-60'}`}>
+                  <Switch
+                    checked={n.enabled}
+                    onCheckedChange={() => toggleNav(n.key)}
+                    data-testid={`toggle-nav-${n.key}`}
+                  />
+                  <span className="flex-1 text-sm font-semibold text-slate-700">{NAV_LABELS[n.key] || n.key}</span>
+                  <div className="flex gap-0.5">
+                    <button
+                      onClick={() => moveNav(idx, -1)}
+                      disabled={idx === 0}
+                      className="p-1.5 rounded-lg hover:bg-white disabled:opacity-30 transition-all"
+                      data-testid={`button-nav-up-${n.key}`}
+                    >
+                      <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                    </button>
+                    <button
+                      onClick={() => moveNav(idx, 1)}
+                      disabled={idx === localNav.length - 1}
+                      className="p-1.5 rounded-lg hover:bg-white disabled:opacity-30 transition-all"
+                      data-testid={`button-nav-down-${n.key}`}
+                    >
+                      <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3">
+            <Button onClick={handleSave} disabled={updatePrefs.isPending} className="flex-1 rounded-2xl h-12 font-bold" data-testid="button-save-personalization">
+              <Check className="w-4 h-4 mr-2" /> Save Layout
+            </Button>
+            <Button variant="outline" onClick={handleReset} className="rounded-2xl h-12 font-bold border-slate-100" data-testid="button-reset-personalization">
               <RefreshCcw className="w-4 h-4 mr-2" /> Reset
             </Button>
           </div>
@@ -938,11 +1088,18 @@ function CaregiversSection({ familyId }: { familyId: number }) {
   const addCaregiver = useAddCaregiver();
   const revokeCaregiver = useRevokeCaregiver();
   const updateCaregiver = useUpdateCaregiver();
+  const { data: checklists } = useCaregiverChecklists();
+  const createChecklist = useCreateCaregiverChecklist();
+  const deleteChecklist = useDeleteCaregiverChecklist();
   const { toast } = useToast();
   const { data: members } = useQuery({ queryKey: ["/api/family/members"] });
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [showChecklistForm, setShowChecklistForm] = useState(false);
+  const [checklistTitle, setChecklistTitle] = useState("");
+  const [checklistCaregiverId, setChecklistCaregiverId] = useState("");
+  const [checklistItems, setChecklistItems] = useState<string[]>([""]);
   const [cgUserId, setCgUserId] = useState("");
   const [cgDisplayName, setCgDisplayName] = useState("");
   const [cgAccessType, setCgAccessType] = useState("ongoing");
@@ -1177,6 +1334,181 @@ function CaregiversSection({ familyId }: { familyId: number }) {
           )}
         </CardContent>
       </Card>
+
+      {activeCaregivers.length > 0 && (
+        <Card className="rounded-[2rem] border-0 shadow-sm bg-white/90">
+          <CardContent className="pt-6 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-teal-500" />
+                <p className="text-sm font-black text-slate-700">Shared Checklists</p>
+              </div>
+              <Button size="sm" onClick={() => setShowChecklistForm(!showChecklistForm)} className="rounded-xl font-bold" data-testid="button-add-checklist">
+                {showChecklistForm ? <X className="w-3.5 h-3.5 mr-1" /> : <Plus className="w-3.5 h-3.5 mr-1" />}
+                {showChecklistForm ? "Cancel" : "New Checklist"}
+              </Button>
+            </div>
+
+            {showChecklistForm && (
+              <div className="space-y-3 p-4 bg-teal-50/50 rounded-2xl border border-teal-100">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-600">Checklist Title</label>
+                  <Input
+                    placeholder="e.g. Bedtime Routine"
+                    value={checklistTitle}
+                    onChange={(e) => setChecklistTitle(e.target.value)}
+                    className="rounded-xl h-9"
+                    data-testid="input-checklist-title"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-600">Assign to Caregiver</label>
+                  <Select value={checklistCaregiverId} onValueChange={setChecklistCaregiverId}>
+                    <SelectTrigger className="rounded-xl h-9" data-testid="select-checklist-caregiver">
+                      <SelectValue placeholder="Select caregiver" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      {activeCaregivers.map((cg: any) => (
+                        <SelectItem key={cg.id} value={String(cg.id)}>
+                          {cg.displayName || `User ${cg.userId}`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-600">Items</label>
+                  <div className="space-y-2">
+                    {checklistItems.map((item, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <Input
+                          value={item}
+                          onChange={(e) => {
+                            const updated = [...checklistItems];
+                            updated[idx] = e.target.value;
+                            setChecklistItems(updated);
+                          }}
+                          placeholder={`Item ${idx + 1}`}
+                          className="rounded-xl h-9 flex-1"
+                          data-testid={`input-checklist-item-${idx}`}
+                        />
+                        {checklistItems.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setChecklistItems(checklistItems.filter((_, i) => i !== idx))}
+                            data-testid={`button-remove-item-${idx}`}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setChecklistItems([...checklistItems, ""])}
+                      className="rounded-xl font-bold text-xs"
+                      data-testid="button-add-checklist-item"
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Add Item
+                    </Button>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => {
+                    if (!checklistTitle.trim() || !checklistCaregiverId) {
+                      toast({ title: "Title and caregiver required", variant: "destructive" });
+                      return;
+                    }
+                    const items = checklistItems.filter(i => i.trim()).map(text => ({ text: text.trim(), checked: false }));
+                    if (items.length === 0) {
+                      toast({ title: "Add at least one item", variant: "destructive" });
+                      return;
+                    }
+                    createChecklist.mutate(
+                      { title: checklistTitle.trim(), caregiverId: Number(checklistCaregiverId), items },
+                      {
+                        onSuccess: () => {
+                          toast({ title: "Checklist created" });
+                          setShowChecklistForm(false);
+                          setChecklistTitle("");
+                          setChecklistCaregiverId("");
+                          setChecklistItems([""]);
+                        },
+                        onError: () => toast({ title: "Failed to create checklist", variant: "destructive" }),
+                      }
+                    );
+                  }}
+                  disabled={createChecklist.isPending}
+                  className="w-full rounded-xl font-bold"
+                  data-testid="button-save-checklist"
+                >
+                  {createChecklist.isPending ? "Creating..." : "Create Checklist"}
+                </Button>
+              </div>
+            )}
+
+            {(checklists || []).length === 0 && !showChecklistForm ? (
+              <div className="text-center py-6">
+                <ClipboardList className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="text-sm font-bold text-slate-500">No checklists yet</p>
+                <p className="text-xs text-slate-400 mt-1">Create a checklist for caregivers to follow.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(checklists || []).map((cl: any) => {
+                  const caregiver = activeCaregivers.find((c: any) => c.id === cl.caregiverId);
+                  const items = (cl.items as Array<{ text: string; checked: boolean }>) || [];
+                  const checkedCount = items.filter(i => i.checked).length;
+                  return (
+                    <div key={cl.id} className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100" data-testid={`checklist-${cl.id}`}>
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">{cl.title}</p>
+                          <p className="text-xs text-slate-400">
+                            For: {caregiver?.displayName || "Caregiver"}
+                            {" "}&middot;{" "}
+                            {checkedCount}/{items.length} done
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            if (confirm("Delete this checklist?")) {
+                              deleteChecklist.mutate(cl.id, {
+                                onSuccess: () => toast({ title: "Checklist deleted" }),
+                              });
+                            }
+                          }}
+                          data-testid={`button-delete-checklist-${cl.id}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                        </Button>
+                      </div>
+                      <div className="space-y-1">
+                        {items.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2 text-sm">
+                            {item.checked ? (
+                              <Check className="w-3.5 h-3.5 text-teal-500 shrink-0" />
+                            ) : (
+                              <div className="w-3.5 h-3.5 rounded border border-slate-300 shrink-0" />
+                            )}
+                            <span className={item.checked ? "line-through text-slate-400" : "text-slate-700"}>
+                              {item.text}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

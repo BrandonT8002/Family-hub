@@ -13,8 +13,23 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Target, Plus, MoreVertical, CheckCircle2, Circle, Flame, TrendingUp, Trophy, Archive, Clock, Trash2, Edit, Eye, EyeOff, Users, User, ChevronDown, ChevronUp, BarChart3, Loader2, X, Tag } from "lucide-react";
+import { Target, Plus, MoreVertical, CheckCircle2, Circle, Flame, TrendingUp, Trophy, Archive, Clock, Trash2, Edit, Eye, EyeOff, Users, User, ChevronDown, ChevronUp, BarChart3, Loader2, X, Tag, UserCircle2 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Goal, GoalItem, GoalCategory } from "@shared/schema";
+
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return "yesterday";
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
 
 const SUGGESTED_CATEGORIES = [
   { name: "Health", icon: "❤️", color: "#ef4444" },
@@ -132,40 +147,102 @@ function GoalItemsList({ goal }: { goal: Goal }) {
 
 function NumericProgress({ goal }: { goal: Goal }) {
   const updateGoal = useUpdateGoal();
-  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [mode, setMode] = useState<"add" | "remove">("add");
   const [amount, setAmount] = useState("");
 
-  const handleAdd = () => {
+  const handleSubmit = () => {
     const num = parseFloat(amount);
-    if (isNaN(num)) return;
-    const newVal = parseFloat(goal.currentValue || "0") + num;
+    if (isNaN(num) || num <= 0) return;
+    const current = parseFloat(goal.currentValue || "0");
+    const newVal = mode === "add" ? current + num : current - num;
     updateGoal.mutate({ id: goal.id, currentValue: String(Math.max(0, newVal)) });
     setAmount("");
-    setAdding(false);
+    setEditing(false);
+  };
+
+  const handleQuickAdjust = (delta: number) => {
+    const current = parseFloat(goal.currentValue || "0");
+    const newVal = current + delta;
+    updateGoal.mutate({ id: goal.id, currentValue: String(Math.max(0, newVal)) });
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">
           {goal.currentValue || "0"} / {goal.targetValue || "0"} {goal.unit || ""}
         </span>
-        <Button size="sm" variant="outline" onClick={() => setAdding(!adding)} className="h-7 text-xs" data-testid={`button-update-numeric-${goal.id}`}>
-          Update
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => handleQuickAdjust(-1)}
+            disabled={parseFloat(goal.currentValue || "0") <= 0}
+            data-testid={`button-quick-minus-${goal.id}`}
+          >
+            <span className="text-lg font-bold leading-none">−</span>
+          </Button>
+          <Button
+            size="icon"
+            variant="outline"
+            onClick={() => handleQuickAdjust(1)}
+            data-testid={`button-quick-plus-${goal.id}`}
+          >
+            <Plus className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setEditing(!editing)} className="text-xs ml-1" data-testid={`button-update-numeric-${goal.id}`}>
+            Custom
+          </Button>
+        </div>
       </div>
-      {adding && (
-        <div className="flex gap-2">
-          <Input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount to add/subtract"
-            className="text-sm h-8"
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            data-testid={`input-numeric-${goal.id}`}
-          />
-          <Button size="sm" onClick={handleAdd} className="h-8" data-testid={`button-submit-numeric-${goal.id}`}>Add</Button>
+      {editing && (
+        <div className="space-y-2">
+          <div className="flex rounded-md overflow-visible border border-border">
+            <button
+              onClick={() => setMode("add")}
+              className={`flex-1 text-sm font-medium py-1.5 transition-colors ${
+                mode === "add"
+                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400"
+                  : "text-muted-foreground"
+              }`}
+              data-testid={`button-mode-add-${goal.id}`}
+            >
+              <Plus className="w-3.5 h-3.5 inline mr-1" />Add
+            </button>
+            <button
+              onClick={() => setMode("remove")}
+              className={`flex-1 text-sm font-medium py-1.5 transition-colors ${
+                mode === "remove"
+                  ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
+                  : "text-muted-foreground"
+              }`}
+              data-testid={`button-mode-remove-${goal.id}`}
+            >
+              <span className="inline mr-1">−</span>Remove
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min="0"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder={`Amount to ${mode}`}
+              className="text-sm"
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              data-testid={`input-numeric-${goal.id}`}
+            />
+            <Button
+              size="sm"
+              onClick={handleSubmit}
+              disabled={!amount || parseFloat(amount) <= 0}
+              variant={mode === "add" ? "default" : "destructive"}
+              data-testid={`button-submit-numeric-${goal.id}`}
+            >
+              {mode === "add" ? "Add" : "Remove"}
+            </Button>
+          </div>
         </div>
       )}
     </div>
@@ -274,8 +351,8 @@ function GoalCard({ goal, categories, onEdit, onDelete }: { goal: Goal; categori
                 {goal.type === "short-term" ? "Short-term" : "Long-term"}
               </Badge>
               {goal.visibility === "family" && (
-                <Badge variant="secondary" className="text-xs">
-                  <Users className="w-3 h-3 mr-1" />Family
+                <Badge variant="default" className="text-xs">
+                  <Users className="w-3 h-3 mr-1" />Family Goal
                 </Badge>
               )}
               {goal.visibility === "personal" && (
@@ -286,6 +363,26 @@ function GoalCard({ goal, categories, onEdit, onDelete }: { goal: Goal; categori
             </div>
             <CardTitle className="text-base font-semibold">{goal.title}</CardTitle>
             {goal.description && <p className="text-sm text-muted-foreground mt-1">{goal.description}</p>}
+            {goal.visibility === "family" && (
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {(goal as any).creatorProfileImage && (
+                  <Avatar className="w-5 h-5">
+                    <AvatarImage src={(goal as any).creatorProfileImage} />
+                    <AvatarFallback className="text-[10px]">{((goal as any).creatorDisplayName || "?")[0]}</AvatarFallback>
+                  </Avatar>
+                )}
+                {(goal as any).creatorDisplayName && (
+                  <span className="text-xs text-muted-foreground" data-testid={`text-creator-${goal.id}`}>
+                    Created by {(goal as any).creatorDisplayName}
+                  </span>
+                )}
+                {(goal as any).lastUpdatedByName && goal.updatedAt && (
+                  <span className="text-xs text-muted-foreground/70" data-testid={`text-updated-by-${goal.id}`}>
+                    {" · "}Updated by {(goal as any).lastUpdatedByName} {formatTimeAgo(new Date(goal.updatedAt))}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-1">
             {dueInfo && (
@@ -568,14 +665,14 @@ export default function Goals() {
             variant={viewTab === tab ? "default" : "outline"}
             size="sm"
             onClick={() => setViewTab(tab)}
-            className="capitalize text-xs"
+            className={`capitalize text-xs ${tab === "shared" && viewTab !== "shared" ? "border-primary/40 text-primary" : ""}`}
             data-testid={`tab-${tab}`}
           >
             {tab === "active" && <TrendingUp className="w-3 h-3 mr-1" />}
             {tab === "shared" && <Users className="w-3 h-3 mr-1" />}
             {tab === "completed" && <Trophy className="w-3 h-3 mr-1" />}
             {tab === "archived" && <Archive className="w-3 h-3 mr-1" />}
-            {tab}
+            {tab === "shared" ? "Family Goals" : tab}
           </Button>
         ))}
         <div className="ml-auto flex gap-2">
@@ -620,16 +717,18 @@ export default function Goals() {
             <Target className="w-12 h-12 mx-auto text-muted-foreground/40 mb-4" />
             <h3 className="font-semibold text-muted-foreground mb-2">
               {viewTab === "active" ? "No active goals yet" :
-               viewTab === "shared" ? "No shared family goals" :
+               viewTab === "shared" ? "No family goals yet" :
                viewTab === "completed" ? "No completed goals yet" :
                "No archived goals"}
             </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              {viewTab === "active" ? "Create your first goal to start tracking progress" : "Goals will appear here as you use them"}
+              {viewTab === "active" ? "Create your first goal to start tracking progress" :
+               viewTab === "shared" ? "Create a goal and share it with your family so everyone can track progress together" :
+               "Goals will appear here as you use them"}
             </p>
-            {viewTab === "active" && (
-              <Button onClick={() => { resetForm(); setEditingGoal(null); setGoalOpen(true); }} data-testid="button-empty-new-goal">
-                <Plus className="w-4 h-4 mr-1" />Create a Goal
+            {(viewTab === "active" || viewTab === "shared") && (
+              <Button onClick={() => { resetForm(); setEditingGoal(null); if (viewTab === "shared") setForm(f => ({ ...f, visibility: "family" })); setGoalOpen(true); }} data-testid="button-empty-new-goal">
+                <Plus className="w-4 h-4 mr-1" />{viewTab === "shared" ? "Create Family Goal" : "Create a Goal"}
               </Button>
             )}
           </CardContent>
@@ -705,32 +804,40 @@ export default function Goals() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1 block">Progress Tracking</label>
-                <Select value={form.progressType} onValueChange={(v) => setForm({ ...form, progressType: v })}>
-                  <SelectTrigger data-testid="select-progress-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="checklist">Checklist</SelectItem>
-                    <SelectItem value="numeric">Numeric</SelectItem>
-                    <SelectItem value="streak">Streak / Consistency</SelectItem>
-                    <SelectItem value="milestone">Milestones</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium mb-1 block">Visibility</label>
-                <Select value={form.visibility} onValueChange={(v) => setForm({ ...form, visibility: v })}>
-                  <SelectTrigger data-testid="select-visibility">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="personal">Personal</SelectItem>
-                    <SelectItem value="family">Family</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Progress Tracking</label>
+              <Select value={form.progressType} onValueChange={(v) => setForm({ ...form, progressType: v })}>
+                <SelectTrigger data-testid="select-progress-type">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="checklist">Checklist</SelectItem>
+                  <SelectItem value="numeric">Numeric</SelectItem>
+                  <SelectItem value="streak">Streak / Consistency</SelectItem>
+                  <SelectItem value="milestone">Milestones</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className={`p-4 rounded-lg border-2 transition-colors ${form.visibility === "family" ? "bg-primary/5 border-primary/30" : "bg-muted/30 border-muted"}`}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg ${form.visibility === "family" ? "bg-primary/10" : "bg-muted"}`}>
+                    {form.visibility === "family" ? <Users className="w-5 h-5 text-primary" /> : <User className="w-5 h-5 text-muted-foreground" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">{form.visibility === "family" ? "Shared with Family" : "Personal Goal"}</p>
+                    <p className="text-xs text-muted-foreground">{form.visibility === "family" ? "All family members can view and contribute to this goal" : "Only you can see this goal"}</p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant={form.visibility === "family" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setForm({ ...form, visibility: form.visibility === "family" ? "personal" : "family" })}
+                  data-testid="button-toggle-visibility"
+                >
+                  {form.visibility === "family" ? "Shared" : "Make Shared"}
+                </Button>
               </div>
             </div>
             {form.progressType === "numeric" && (

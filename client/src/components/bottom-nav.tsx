@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useFamily } from "@/hooks/use-family";
 import { useCaregiverMode } from "./layout";
 import { useQuery } from "@tanstack/react-query";
+import { usePreferences } from "@/hooks/use-preferences";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,41 +45,28 @@ const caregiverPrimaryNav = [
   { title: "Chat", url: "/chat", icon: MessageSquare },
 ];
 
-const moreNavSections = [
-  {
-    label: "Essentials",
-    items: [
-      { title: "Money", url: "/money", icon: Wallet, description: "Bills, expenses & savings", accent: "bg-emerald-50 text-emerald-600" },
-      { title: "Goals", url: "/goals", icon: Target, description: "Track what matters", accent: "bg-blue-50 text-blue-600" },
-      { title: "Wishlists", url: "/wishlists", icon: Heart, description: "Share what you'd love", accent: "bg-pink-50 text-pink-600" },
-    ],
-  },
-  {
-    label: "Growth",
-    items: [
-      { title: "Academics", url: "/academics", icon: GraduationCap, description: "Classes, grades & progress", accent: "bg-indigo-50 text-indigo-600" },
-      { title: "Workouts", url: "/workouts", icon: Dumbbell, description: "Fitness & consistency", accent: "bg-orange-50 text-orange-600" },
-      { title: "Snapshots", url: "/snapshots", icon: BarChart3, description: "Progress over time", accent: "bg-teal-50 text-teal-600" },
-    ],
-  },
-  {
-    label: "Personal",
-    items: [
-      { title: "Diary", url: "/diary", icon: BookOpen, description: "Private reflections", accent: "bg-amber-50 text-amber-600" },
-      { title: "Leave Time", url: "/leave-time", icon: Clock, description: "Walk-out reminders", accent: "bg-violet-50 text-violet-600" },
-      { title: "Connections", url: "/connections", icon: Users, description: "Linked family accounts", accent: "bg-cyan-50 text-cyan-600" },
-      { title: "Caregiver", url: "/settings", icon: ShieldCheck, description: "Manage caretaker access", accent: "bg-sky-50 text-sky-600" },
-    ],
-  },
-];
+type NavItem = { key: string; title: string; url: string; icon: any; description: string; accent: string };
 
-const allMoreUrls = moreNavSections.flatMap(s => s.items.map(i => i.url)).concat(["/settings"]);
+const ALL_MORE_ITEMS: NavItem[] = [
+  { key: "money", title: "Money", url: "/money", icon: Wallet, description: "Bills, expenses & savings", accent: "bg-emerald-50 text-emerald-600" },
+  { key: "goals", title: "Goals", url: "/goals", icon: Target, description: "Track what matters", accent: "bg-blue-50 text-blue-600" },
+  { key: "wishlists", title: "Wishlists", url: "/wishlists", icon: Heart, description: "Share what you'd love", accent: "bg-pink-50 text-pink-600" },
+  { key: "academics", title: "Academics", url: "/academics", icon: GraduationCap, description: "Classes, grades & progress", accent: "bg-indigo-50 text-indigo-600" },
+  { key: "workouts", title: "Workouts", url: "/workouts", icon: Dumbbell, description: "Fitness & consistency", accent: "bg-orange-50 text-orange-600" },
+  { key: "snapshots", title: "Snapshots", url: "/snapshots", icon: BarChart3, description: "Progress over time", accent: "bg-teal-50 text-teal-600" },
+  { key: "diary", title: "Diary", url: "/diary", icon: BookOpen, description: "Private reflections", accent: "bg-amber-50 text-amber-600" },
+  { key: "leaveTime", title: "Leave Time", url: "/leave-time", icon: Clock, description: "Walk-out reminders", accent: "bg-violet-50 text-violet-600" },
+  { key: "connections", title: "Connections", url: "/connections", icon: Users, description: "Linked family accounts", accent: "bg-cyan-50 text-cyan-600" },
+  { key: "members", title: "Members", url: "/members", icon: Users, description: "View & collaborate with family", accent: "bg-cyan-50 text-cyan-600" },
+  { key: "caregiver", title: "Caregiver", url: "/settings", icon: ShieldCheck, description: "Manage caretaker access", accent: "bg-sky-50 text-sky-600" },
+];
 
 export function BottomNav() {
   const [location, setLocation] = useLocation();
   const { user, logout } = useAuth();
   const { data: family } = useFamily();
   const { isCaregiver } = useCaregiverMode();
+  const { navItems: navPrefs } = usePreferences();
   const [moreOpen, setMoreOpen] = useState(false);
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -89,6 +77,28 @@ export function BottomNav() {
     refetchInterval: 10000,
     enabled: !!user && !!family,
   });
+
+  const orderedMoreItems = useMemo(() => {
+    const enabledKeys = navPrefs.filter(p => p.enabled).map(p => p.key);
+    const itemMap = new Map(ALL_MORE_ITEMS.map(i => [i.key, i]));
+    const ordered: NavItem[] = [];
+    for (const pref of navPrefs) {
+      if (pref.enabled && itemMap.has(pref.key)) {
+        ordered.push(itemMap.get(pref.key)!);
+      }
+    }
+    for (const item of ALL_MORE_ITEMS) {
+      if (!navPrefs.some(p => p.key === item.key)) {
+        ordered.push(item);
+      }
+    }
+    return ordered;
+  }, [navPrefs]);
+
+  const allMoreUrls = useMemo(() => 
+    orderedMoreItems.map(i => i.url).concat(["/settings"]),
+    [orderedMoreItems]
+  );
 
   const handleScroll = useCallback(() => {
     const mainEl = document.getElementById("main-scroll-area");
@@ -152,37 +162,34 @@ export function BottomNav() {
                 <div className="w-10 h-1 rounded-full bg-gray-200" />
               </div>
 
-              {moreNavSections.map((section) => (
-                <div key={section.label} className="px-4 pb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 px-2 pt-2 pb-1.5">{section.label}</p>
-                  <div className="space-y-0.5">
-                    {section.items.map((item) => {
-                      const active = isActive(item.url);
-                      return (
-                        <Link key={item.url} href={item.url}>
-                          <button
-                            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl transition-all duration-200 ${
-                              active
-                                ? "bg-primary/8 text-primary"
-                                : "text-gray-700 hover:bg-gray-50 active:scale-[0.98]"
-                            }`}
-                            data-testid={`nav-more-${item.title.toLowerCase().replace(/\s/g, '-')}`}
-                          >
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${active ? "bg-primary/10 text-primary" : item.accent}`}>
-                              <item.icon className="w-[18px] h-[18px]" />
-                            </div>
-                            <div className="flex-1 text-left min-w-0">
-                              <p className={`text-sm leading-tight ${active ? "font-bold" : "font-semibold"}`}>{item.title}</p>
-                              <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{item.description}</p>
-                            </div>
-                            <ChevronRight className={`w-4 h-4 shrink-0 ${active ? "text-primary/50" : "text-gray-300"}`} />
-                          </button>
-                        </Link>
-                      );
-                    })}
-                  </div>
+              <div className="px-4 pb-2">
+                <div className="space-y-0.5">
+                  {orderedMoreItems.map((item) => {
+                    const active = isActive(item.url);
+                    return (
+                      <Link key={item.key} href={item.url}>
+                        <button
+                          className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-2xl transition-all duration-200 ${
+                            active
+                              ? "bg-primary/8 text-primary"
+                              : "text-gray-700 hover:bg-gray-50 active:scale-[0.98]"
+                          }`}
+                          data-testid={`nav-more-${item.title.toLowerCase().replace(/\s/g, '-')}`}
+                        >
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${active ? "bg-primary/10 text-primary" : item.accent}`}>
+                            <item.icon className="w-[18px] h-[18px]" />
+                          </div>
+                          <div className="flex-1 text-left min-w-0">
+                            <p className={`text-sm leading-tight ${active ? "font-bold" : "font-semibold"}`}>{item.title}</p>
+                            <p className="text-[11px] text-gray-400 leading-tight mt-0.5">{item.description}</p>
+                          </div>
+                          <ChevronRight className={`w-4 h-4 shrink-0 ${active ? "text-primary/50" : "text-gray-300"}`} />
+                        </button>
+                      </Link>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
 
               <div className="border-t border-gray-100/80 mx-4 mt-1" />
 

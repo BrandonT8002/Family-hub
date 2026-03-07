@@ -214,7 +214,7 @@ export default function Schedule() {
   const showRecurrenceDays = formData.recurrence === "Daily" || formData.recurrence === "Weekly";
 
   return (
-    <div className="space-y-8 max-w-6xl mx-auto pb-20">
+    <div className="space-y-8 max-w-6xl mx-auto pb-32">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
         <div>
           <h1 className="text-4xl font-display font-black tracking-tight text-slate-900">Schedule</h1>

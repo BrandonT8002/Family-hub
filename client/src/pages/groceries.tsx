@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ShoppingCart, Plus, ChevronRight, Store, ListChecks, Lock, Globe, MoreVertical, ShoppingBag, Home, Wrench, BookOpen, Baby, PawPrint, Pill, Laptop, Package } from "lucide-react";
+import { ShoppingCart, Plus, ChevronRight, Store, ListChecks, Lock, Globe, MoreVertical, ShoppingBag, Home, Wrench, BookOpen, Baby, PawPrint, Pill, Laptop, Package, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -140,15 +140,19 @@ export default function Groceries() {
                   <Input value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="Walmart, Target..." className="rounded-xl h-12 bg-muted/50 border-transparent focus-visible:ring-primary/20" data-testid="input-store-name" />
                 </div>
               </div>
-              <div className="flex items-center justify-between bg-muted/30 p-4 rounded-xl">
-                <div className="flex items-center gap-2">
-                  {isPrivate ? <Lock className="w-4 h-4 text-muted-foreground" /> : <Globe className="w-4 h-4 text-muted-foreground" />}
-                  <div>
-                    <p className="text-sm font-semibold">{isPrivate ? "Private List" : "Shared List"}</p>
-                    <p className="text-xs text-muted-foreground">{isPrivate ? "Only you can see this list" : "Visible to all family members"}</p>
+              <div className={`p-4 rounded-xl border-2 transition-colors ${isPrivate ? 'bg-muted/30 border-muted' : 'bg-primary/5 border-primary/30'}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${isPrivate ? 'bg-muted' : 'bg-primary/10'}`}>
+                      {isPrivate ? <Lock className="w-5 h-5 text-muted-foreground" /> : <Users className="w-5 h-5 text-primary" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold">{isPrivate ? "Private List" : "Shared with Family"}</p>
+                      <p className="text-xs text-muted-foreground">{isPrivate ? "Only you can see and edit this list" : "Everyone in your family can view, add items, and check things off"}</p>
+                    </div>
                   </div>
+                  <Switch checked={isPrivate} onCheckedChange={setIsPrivate} data-testid="switch-private" />
                 </div>
-                <Switch checked={isPrivate} onCheckedChange={setIsPrivate} data-testid="switch-private" />
               </div>
               <Button type="submit" disabled={createList.isPending} className="w-full rounded-2xl h-14 text-lg font-bold shadow-xl shadow-primary/10 mt-2" data-testid="button-create-list">
                 {createList.isPending ? "Creating..." : "Start List"}
@@ -240,6 +244,12 @@ export default function Groceries() {
                             </div>
                           )}
                         </div>
+                        {!list.isPrivate && (
+                          <div className="flex items-center gap-1.5 text-xs text-primary/70" data-testid={`badge-shared-${list.id}`}>
+                            <Users className="w-3.5 h-3.5" />
+                            <span className="font-medium">Shared with family</span>
+                          </div>
+                        )}
                         <div className="flex items-center justify-between text-sm pt-2">
                           <span className="text-muted-foreground font-medium">Tap to open list</span>
                           <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />

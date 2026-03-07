@@ -11,9 +11,17 @@ export function useFamily() {
       const res = await fetch(api.family.get.path, { credentials: "include" });
       if (res.status === 401) return null;
       if (!res.ok) throw new Error("Failed to fetch family");
-      return api.family.get.responses[200].parse(await res.json());
+      const data = await res.json();
+      if (!data) return null;
+      return api.family.get.responses[200].parse(data);
     },
-    retry: false,
+    retry: (failureCount, error) => {
+      if (error.message === "Failed to fetch family") {
+        return failureCount < 2;
+      }
+      return false;
+    },
+    retryDelay: 1000,
   });
 }
 

@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRoute, Link } from "wouter";
 import { useGroceryLists, useGroceryItems, useCreateGroceryItem, useToggleGroceryItem, useUpdateGroceryItem, useDeleteGroceryItem } from "@/hooks/use-groceries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, CheckCircle2, Circle, ShoppingCart, Tag, Store, Pencil, Trash2, X, Check, MoreVertical } from "lucide-react";
+import { ArrowLeft, Plus, CheckCircle2, Circle, ShoppingCart, Tag, Store, Pencil, Trash2, X, Check, MoreVertical, UserCircle2, Users, Lock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -125,8 +125,19 @@ export default function GroceryListDetail() {
   const estimatedTotal = (items || []).reduce((sum, item) => sum + Number(item.price || 0), 0);
   const runningTotal = (items || []).filter(i => i.isChecked).reduce((sum, item) => sum + Number(item.price || 0), 0);
 
+  const contributors = useMemo(() => {
+    if (!items) return [];
+    const seen = new Map<string, string>();
+    for (const item of items) {
+      if (item.addedByName && item.addedBy && !seen.has(item.addedBy)) {
+        seen.set(item.addedBy, item.addedByName);
+      }
+    }
+    return Array.from(seen.entries()).map(([id, name]) => ({ id, name }));
+  }, [items]);
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20">
+    <div className="max-w-4xl mx-auto space-y-6 pb-32">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <Link href="/groceries" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 mb-4 inline-flex w-fit transition-colors" data-testid="link-back-to-lists">
@@ -136,11 +147,23 @@ export default function GroceryListDetail() {
             <h1 className="text-3xl font-display font-bold" data-testid="text-list-name">{list?.name || "Grocery List"}</h1>
             {list?.type && <Badge variant="secondary" className="rounded-md">{list.type}</Badge>}
           </div>
-          {list?.storeName && (
-            <p className="text-muted-foreground flex items-center gap-1.5 mt-1">
-              <Store className="w-4 h-4" /> {list.storeName}
-            </p>
-          )}
+          <div className="flex items-center gap-3 mt-1 flex-wrap">
+            {list?.storeName && (
+              <span className="text-muted-foreground flex items-center gap-1.5 text-sm">
+                <Store className="w-4 h-4" /> {list.storeName}
+              </span>
+            )}
+            {list && !list.isPrivate && (
+              <Badge variant="secondary" className="text-xs" data-testid="badge-list-shared">
+                <Users className="w-3 h-3 mr-1" />Shared with family
+              </Badge>
+            )}
+            {list?.isPrivate && (
+              <Badge variant="outline" className="text-xs" data-testid="badge-list-private">
+                <Lock className="w-3 h-3 mr-1" />Private
+              </Badge>
+            )}
+          </div>
         </div>
         
         <Card className="bg-primary/5 border-primary/20 rounded-2xl p-4 shadow-sm min-w-[200px]">
@@ -151,6 +174,18 @@ export default function GroceryListDetail() {
           </div>
         </Card>
       </div>
+
+      {contributors.length > 0 && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap" data-testid="contributors-list">
+          <UserCircle2 className="w-4 h-4" />
+          <span className="font-medium">Contributors:</span>
+          {contributors.map(c => (
+            <Badge key={c.id} variant="secondary" className="text-xs" data-testid={`contributor-${c.id}`}>
+              {c.name}
+            </Badge>
+          ))}
+        </div>
+      )}
 
       <Card className="rounded-3xl border-border/50 shadow-sm overflow-hidden bg-muted/20">
         <div className="p-4 bg-background border-b border-border/50">
@@ -231,7 +266,12 @@ export default function GroceryListDetail() {
                             <span className={`text-base font-medium transition-all ${item.isChecked ? 'line-through text-muted-foreground decoration-2' : ''}`} data-testid={`text-item-name-${item.id}`}>
                               {item.name}
                             </span>
-                            <div className="flex items-center gap-3 mt-0.5">
+                            <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                              {item.addedByName && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1" data-testid={`text-added-by-${item.id}`}>
+                                  <UserCircle2 className="w-3 h-3" />{item.addedByName}
+                                </span>
+                              )}
                               {item.price && Number(item.price) > 0 && (
                                 <span className="text-xs font-bold text-muted-foreground" data-testid={`text-item-price-${item.id}`}>${Number(item.price).toFixed(2)}</span>
                               )}

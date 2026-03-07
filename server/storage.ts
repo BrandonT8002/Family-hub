@@ -5,6 +5,7 @@ import {
   diaryEntries, diarySettings, goals, goalItems, goalCategories, wishlists, wishlistItems,
   leaveTimeSettings, leaveTimeOverrides, leaveTimeTemplates, caregivers, careNotes, familyInvites,
   familyConnections, academicClasses, academicEntries, workouts, snapshots,
+  caregiverChecklists, userPreferences,
   type InsertFamily, type InsertEvent, type InsertExpense, type InsertGroceryList, type InsertGroceryItem, type InsertChatMessage, type InsertDiaryEntry,
   type Caregiver, type CareNote, type FamilyInvite,
   type FamilyConnection, type AcademicClass, type AcademicEntry, type Workout, type Snapshot
@@ -133,6 +134,14 @@ export interface IStorage {
   createSnapshot(data: any): Promise<Snapshot>;
 
   muteConversation(conversationId: number, userId: string, until: Date | null): Promise<void>;
+
+  getCaregiverChecklists(familyId: number, caregiverId?: number): Promise<any[]>;
+  createCaregiverChecklist(data: any): Promise<any>;
+  updateCaregiverChecklist(id: number, data: any): Promise<any>;
+  deleteCaregiverChecklist(id: number, familyId: number): Promise<void>;
+
+  getUserPreferences(userId: string, familyId: number): Promise<any | null>;
+  upsertUserPreferences(userId: string, familyId: number, data: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -317,7 +326,38 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGroceryItems(listId: number) {
-    return await db.select().from(groceryItems).where(eq(groceryItems.listId, listId));
+    const rows = await db.select({
+      id: groceryItems.id,
+      listId: groceryItems.listId,
+      name: groceryItems.name,
+      category: groceryItems.category,
+      price: groceryItems.price,
+      isChecked: groceryItems.isChecked,
+      notes: groceryItems.notes,
+      assignedTo: groceryItems.assignedTo,
+      addedBy: groceryItems.addedBy,
+      addedByDisplayName: familyMembers.displayName,
+      addedByFirstName: users.firstName,
+    })
+    .from(groceryItems)
+    .leftJoin(users, eq(groceryItems.addedBy, users.id))
+    .leftJoin(familyMembers, and(
+      eq(familyMembers.userId, groceryItems.addedBy),
+      eq(familyMembers.familyId, sql`(SELECT family_id FROM grocery_lists WHERE id = ${groceryItems.listId})`)
+    ))
+    .where(eq(groceryItems.listId, listId));
+    return rows.map(r => ({
+      id: r.id,
+      listId: r.listId,
+      name: r.name,
+      category: r.category,
+      price: r.price,
+      isChecked: r.isChecked,
+      notes: r.notes,
+      assignedTo: r.assignedTo,
+      addedBy: r.addedBy,
+      addedByName: r.addedByDisplayName || r.addedByFirstName || null,
+    }));
   }
 
   async createGroceryItem(item: InsertGroceryItem) {
@@ -525,10 +565,12 @@ export class DatabaseStorage implements IStorage {
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
-      }
+      },
+      displayName: familyMembers.displayName,
     })
     .from(chatMessages)
     .innerJoin(users, eq(chatMessages.senderId, users.id))
+    .leftJoin(familyMembers, and(eq(familyMembers.userId, chatMessages.senderId), eq(familyMembers.familyId, chatMessages.familyId)))
     .where(and(eq(chatMessages.conversationId, conversationId), eq(chatMessages.isDeleted, false)))
     .orderBy(desc(chatMessages.createdAt))
     .limit(100);
@@ -547,10 +589,12 @@ export class DatabaseStorage implements IStorage {
         firstName: users.firstName,
         lastName: users.lastName,
         profileImageUrl: users.profileImageUrl,
-      }
+      },
+      displayName: familyMembers.displayName,
     })
     .from(chatMessages)
     .innerJoin(users, eq(chatMessages.senderId, users.id))
+    .leftJoin(familyMembers, and(eq(familyMembers.userId, chatMessages.senderId), eq(familyMembers.familyId, chatMessages.familyId)))
     .where(and(eq(chatMessages.familyId, familyId), eq(chatMessages.isDeleted, false)))
     .orderBy(desc(chatMessages.createdAt))
     .limit(50);
@@ -700,7 +744,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getGoals(familyId: number) {
-    return db.select().from(goals).where(eq(goals.familyId, familyId)).orderBy(desc(goals.updatedAt));
+    const rows = await db.select({
+      goal: goals,
+      creatorDisplayName: familyMembers.displayName,
+      creatorFirstName: users.firstName,
+      creatorProfileImage: users.profileImageUrl,
+    })
+    .from(goals)
+    .leftJoin(familyMembers, and(
+      eq(familyMembers.userId, goals.creatorId),
+      eq(familyMembers.familyId, goals.familyId)
+    ))
+    .leftJoin(users, eq(users.id, goals.creatorId))
+    .where(eq(goals.familyId, familyId))
+    .orderBy(desc(goals.updatedAt));
+    
+    const result = [];
+    for (const r of rows) {
+      let lastUpdatedByName: string | null = null;
+      if (r.goal.lastUpdatedBy) {
+        const [updater] = await db.select({
+          displayName: familyMembers.displayName,
+          firstName: users.firstName,
+        })
+        .from(users)
+        .leftJoin(familyMembers, and(
+          eq(familyMembers.userId, users.id),
+          eq(familyMembers.familyId, sql`${familyId}`)
+        ))
+        .where(eq(users.id, r.goal.lastUpdatedBy));
+        lastUpdatedByName = updater?.displayName || updater?.firstName || null;
+      }
+      result.push({
+        ...r.goal,
+        creatorDisplayName: r.creatorDisplayName || r.creatorFirstName || null,
+        creatorProfileImage: r.creatorProfileImage || null,
+        lastUpdatedByName,
+      });
+    }
+    return result;
   }
 
   async getGoal(id: number) {
@@ -714,7 +796,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateGoal(id: number, familyId: number, data: any) {
-    const [updated] = await db.update(goals).set({ ...data, updatedAt: new Date() }).where(and(eq(goals.id, id), eq(goals.familyId, familyId))).returning();
+    const updateData = { ...data, updatedAt: new Date() };
+    const [updated] = await db.update(goals).set(updateData).where(and(eq(goals.id, id), eq(goals.familyId, familyId))).returning();
     return updated;
   }
 
@@ -1090,6 +1173,52 @@ export class DatabaseStorage implements IStorage {
         eq(conversationParticipants.conversationId, conversationId),
         eq(conversationParticipants.userId, userId)
       ));
+  }
+
+  async getCaregiverChecklists(familyId: number, caregiverId?: number) {
+    if (caregiverId) {
+      return db.select().from(caregiverChecklists)
+        .where(and(eq(caregiverChecklists.familyId, familyId), eq(caregiverChecklists.caregiverId, caregiverId)))
+        .orderBy(desc(caregiverChecklists.createdAt));
+    }
+    return db.select().from(caregiverChecklists)
+      .where(eq(caregiverChecklists.familyId, familyId))
+      .orderBy(desc(caregiverChecklists.createdAt));
+  }
+
+  async createCaregiverChecklist(data: any) {
+    const [c] = await db.insert(caregiverChecklists).values(data).returning();
+    return c;
+  }
+
+  async updateCaregiverChecklist(id: number, data: any) {
+    const [c] = await db.update(caregiverChecklists).set(data).where(eq(caregiverChecklists.id, id)).returning();
+    return c;
+  }
+
+  async deleteCaregiverChecklist(id: number, familyId: number) {
+    await db.delete(caregiverChecklists).where(and(eq(caregiverChecklists.id, id), eq(caregiverChecklists.familyId, familyId)));
+  }
+
+  async getUserPreferences(userId: string, familyId: number) {
+    const [prefs] = await db.select().from(userPreferences)
+      .where(and(eq(userPreferences.userId, userId), eq(userPreferences.familyId, familyId)));
+    return prefs || null;
+  }
+
+  async upsertUserPreferences(userId: string, familyId: number, data: any) {
+    const existing = await this.getUserPreferences(userId, familyId);
+    if (existing) {
+      const [updated] = await db.update(userPreferences)
+        .set({ ...data, updatedAt: new Date() })
+        .where(and(eq(userPreferences.userId, userId), eq(userPreferences.familyId, familyId)))
+        .returning();
+      return updated;
+    }
+    const [created] = await db.insert(userPreferences)
+      .values({ userId, familyId, ...data })
+      .returning();
+    return created;
   }
 }
 
