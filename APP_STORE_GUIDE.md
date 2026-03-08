@@ -69,9 +69,9 @@ docker compose exec app npx drizzle-kit push
 3. **CocoaPods** — Install by running: `sudo gem install cocoapods`
 4. **Your backend deployed** (from Part 1) with a URL
 
-### Step 1: Download the Project
+### Step 1: Get the Project
 
-Download the entire project folder from Replit to your Mac. You can use the "Download as ZIP" option from the three-dot menu in the Files panel.
+Clone the project from your GitHub repository to your Mac, or download it as a ZIP.
 
 ### Step 2: Install Dependencies
 
