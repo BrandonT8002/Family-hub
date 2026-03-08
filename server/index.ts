@@ -78,6 +78,9 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
+ app.get("/", (req, res) => {
+  res.send("Family Hub API is running");
+});
   if (process.env.NODE_ENV === "production") {
     serveStatic(app);
   } else {
@@ -90,9 +93,7 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
  const port = process.env.PORT || 5000;
-app.get("/", (req, res) => {
-  res.send("Family Hub API is running");
-});
+
 httpServer.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
 });
