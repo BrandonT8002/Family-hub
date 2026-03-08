@@ -96,4 +96,7 @@ app.get("/", (req, res) => {
 httpServer.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
 });
-})();
+})().catch((err) => {
+  console.error("Startup failed:", err);
+  process.exit(1);
+});
