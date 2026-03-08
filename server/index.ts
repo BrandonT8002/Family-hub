@@ -90,7 +90,9 @@ app.use((req, res, next) => {
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
  const port = process.env.PORT || 5000;
-
+app.get("/", (req, res) => {
+  res.send("Family Hub API is running");
+});
 httpServer.listen(port, "0.0.0.0", () => {
   console.log(`Server running on port ${port}`);
 });
